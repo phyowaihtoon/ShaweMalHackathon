@@ -80,6 +80,7 @@ The application contains:
 - Finding House
 - Hire Moving Service
 - Finding Roommates
+- Post Housing Information (visible only to users with the agent role; opens agent housing manage/post flow)
 
 ## 5.2 Admin Portal
 - Accessible only by admin role.
@@ -187,6 +188,7 @@ The application contains:
 - Agent must be verified by admin before posting housing info.
 
 ### FR-AGENT-003 Housing CRUD
+- Users with the agent role shall access **Post Housing Information** from the public portal sub-header (and may also open the same flow from the profile menu).
 - Verified agent shall be able to:
   - Post housing info
   - Edit housing info
@@ -330,7 +332,7 @@ The application contains:
 - Deposit Amount
 - Contract Type (example: 3 months, 6 months)
 - Area Size (text)
-- Floor Level (dropdown: 1st Floor to 20th Floor)
+- Floor Level (dropdown: Ground Floor, 1st Floor to 20th Floor)
 - Bedrooms (number)
 - Bathrooms (number)
 - House Rules (text)
@@ -555,8 +557,8 @@ The following reference data objects are identified as likely admin-managed mast
 ### MD-007 Floor Level
 - Fields:
   - id (UUID/string, unique, required)
-  - name (string, required, e.g. 1st Floor, 2nd Floor, Rooftop)
-  - levelNumber (number, optional)
+  - name (string, required, e.g. Ground Floor, 1st Floor, 2nd Floor, Rooftop)
+  - levelNumber (number, optional, e.g. 0 for Ground Floor through 20 for 20th Floor)
   - description (text, optional)
   - isActive (boolean, default true)
 
@@ -756,6 +758,7 @@ The `backend-api/` project implements the server-side scope of this specificatio
 - Versioned API under `/api/v1`
 - Public home feed: featured listings, popular houses, verified agents, partner drivers, service reviews
 - Public master-data reads for dropdown/filter values (active records only)
+- Prisma seed includes §8.3 / MD-009 amenities (`AIR CONDITIONER` … `EV CHARGER`) with General/Building/Utility categories, MD-007 floor levels (Ground Floor / `0` through 20th Floor / `20`), plus roles, status codes, Yangon locations, property types, vehicle types, and admin user
 - Self-service agent and driver registration via `/registrations/*` (assigns role, creates profile, sets verification to pending)
 - Booking lifecycle with confirm/cancel status updates
 - Moving requests include `estimatedEarnings` for driver job visibility (FR-DRIVER-005)
@@ -817,7 +820,7 @@ The `frontend-app/` project is an independent Vite + React + TypeScript applicat
 - Admin layout nav: Dashboard, Verifications, Users, Moving Assign, Master Data, Reports. `AdminAuthGuard` continues to require `admin` role.
 
 ### Increment D implemented (agent housing CRUD + polish)
-- **FR-AGENT-002..003**: Agent-role UserMenu link to `/agent/houses`. List own houses via `GET /agent/houses`. Create/edit forms cover §8.3 fields aligned with `agentHouseCreateValidator` (`POST/PATCH /agent/houses`, `DELETE /agent/houses/:id`). Master-data dropdowns: property-types, cities, states, contract-types, floor-levels, amenities. Image fields are path strings (no binary upload). Unverified agents see a clear banner; create/edit/delete stay disabled while backend enforces `AGENT_NOT_VERIFIED`.
+- **FR-AGENT-002..003**: Agent-role public sub-header link **Post Housing Information** and UserMenu link to `/agent/houses`. List own houses via `GET /agent/houses`. Create/edit forms cover §8.3 fields aligned with `agentHouseCreateValidator` (`POST/PATCH /agent/houses`, `DELETE /agent/houses/:id`). Master-data dropdowns: property-types, cities, states, contract-types, floor-levels, amenities. Image fields are path strings (no binary upload). Unverified agents see a clear banner; create/edit/delete stay disabled while backend enforces `AGENT_NOT_VERIFIED`.
 - About Us page copy polished; UserMenu also links Agent Register for discoverability.
 
 ### Intentional choices / deferred

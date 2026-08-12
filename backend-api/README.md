@@ -14,7 +14,7 @@ TypeScript + Express + Prisma + MySQL API for the ShweMal platform.
 - `npm run prisma:generate` — generate Prisma client
 - `npm run prisma:migrate:dev` — development migrations
 - `npm run prisma:migrate:deploy` — deploy migrations
-- `npm run prisma:seed` — seed roles and status codes
+- `npm run prisma:seed` — seed roles, status codes, Yangon locations, property types, vehicle types, amenities (§8.3 / MD-009), floor levels (MD-007), and admin user
 
 ## Architecture
 

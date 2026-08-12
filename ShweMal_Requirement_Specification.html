@@ -304,6 +304,7 @@ The application contains:
 - Finding House
 - Hire Moving Service
 - Finding Roommates
+- Post Housing Information (visible only to users with the agent role; opens agent housing manage/post flow)
 
 ## 5.2 Admin Portal
 - Accessible only by admin role.
@@ -411,6 +412,7 @@ The application contains:
 - Agent must be verified by admin before posting housing info.
 
 ### FR-AGENT-003 Housing CRUD
+- Users with the agent role shall access **Post Housing Information** from the public portal sub-header (and may also open the same flow from the profile menu).
 - Verified agent shall be able to:
   - Post housing info
   - Edit housing info
@@ -554,7 +556,7 @@ The application contains:
 - Deposit Amount
 - Contract Type (example: 3 months, 6 months)
 - Area Size (text)
-- Floor Level (dropdown: 1st Floor to 20th Floor)
+- Floor Level (dropdown: Ground Floor, 1st Floor to 20th Floor)
 - Bedrooms (number)
 - Bathrooms (number)
 - House Rules (text)
@@ -779,8 +781,8 @@ The following reference data objects are identified as likely admin-managed mast
 ### MD-007 Floor Level
 - Fields:
   - id (UUID/string, unique, required)
-  - name (string, required, e.g. 1st Floor, 2nd Floor, Rooftop)
-  - levelNumber (number, optional)
+  - name (string, required, e.g. Ground Floor, 1st Floor, 2nd Floor, Rooftop)
+  - levelNumber (number, optional, e.g. 0 for Ground Floor through 20 for 20th Floor)
   - description (text, optional)
   - isActive (boolean, default true)
 

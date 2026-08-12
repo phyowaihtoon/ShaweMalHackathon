@@ -100,7 +100,7 @@ Provider order: Theme → I18n → Query → Auth → Router.
 
 | Area | Requirement IDs | Notes |
 | --- | --- | --- |
-| Agent housing CRUD | FR-AGENT-002..003 | `/agent/houses` list/create/edit/delete against `/agent/houses` APIs; UserMenu link for `agent` role; unverified agents see a clear verification banner and mutations stay disabled |
+| Agent housing CRUD | FR-AGENT-002..003 | `/agent/houses` list/create/edit/delete against `/agent/houses` APIs; public sub-header **Post Housing Information** + UserMenu link for `agent` role; unverified agents see a clear verification banner and mutations stay disabled |
 
 ### Key routes
 

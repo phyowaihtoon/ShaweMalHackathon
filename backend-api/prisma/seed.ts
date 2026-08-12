@@ -237,6 +237,95 @@ const seedVehicleTypes = async (): Promise<void> => {
   console.log(`Vehicle types seeded: ${vehicleTypes.length}`);
 };
 
+/** §8.3 / MD-009 Amenities & Facilities */
+const AMENITIES = [
+  { name: 'AIR CONDITIONER', category: 'Utility' },
+  { name: 'PARKING', category: 'Building' },
+  { name: 'FURNISHED', category: 'General' },
+  { name: 'WATER HEATER', category: 'Utility' },
+  { name: 'FAN', category: 'General' },
+  { name: 'TELEVISION', category: 'General' },
+  { name: 'REFRIGERATOR', category: 'General' },
+  { name: 'SOFA', category: 'General' },
+  { name: 'DESK', category: 'General' },
+  { name: 'KITCHEN STOVE', category: 'General' },
+  { name: 'WIFI', category: 'Utility' },
+  { name: 'PETS', category: 'General' },
+  { name: 'SMOKING', category: 'General' },
+  { name: 'LIFT', category: 'Building' },
+  { name: 'POOL', category: 'Building' },
+  { name: 'FITNESS', category: 'Building' },
+  { name: 'SECURITY GUARD', category: 'Building' },
+  { name: 'KEYCARD', category: 'Building' },
+  { name: 'FINGERPRINT', category: 'Building' },
+  { name: 'CCTV', category: 'Building' },
+  { name: 'LAUNDRY', category: 'General' },
+  { name: 'EV CHARGER', category: 'Utility' }
+] as const;
+
+const seedAmenities = async (): Promise<void> => {
+  for (const amenity of AMENITIES) {
+    await prisma.amenity.upsert({
+      where: { name: amenity.name },
+      update: {
+        category: amenity.category,
+        isActive: true
+      },
+      create: {
+        name: amenity.name,
+        category: amenity.category,
+        isActive: true
+      }
+    });
+  }
+
+  console.log(`Amenities seeded: ${AMENITIES.length}`);
+};
+
+/** MD-007 Floor Level (Ground Floor through 20th Floor) */
+const FLOOR_LEVELS = [
+  { levelNumber: 0, name: 'Ground Floor' },
+  { levelNumber: 1, name: '1st Floor' },
+  { levelNumber: 2, name: '2nd Floor' },
+  { levelNumber: 3, name: '3rd Floor' },
+  { levelNumber: 4, name: '4th Floor' },
+  { levelNumber: 5, name: '5th Floor' },
+  { levelNumber: 6, name: '6th Floor' },
+  { levelNumber: 7, name: '7th Floor' },
+  { levelNumber: 8, name: '8th Floor' },
+  { levelNumber: 9, name: '9th Floor' },
+  { levelNumber: 10, name: '10th Floor' },
+  { levelNumber: 11, name: '11th Floor' },
+  { levelNumber: 12, name: '12th Floor' },
+  { levelNumber: 13, name: '13th Floor' },
+  { levelNumber: 14, name: '14th Floor' },
+  { levelNumber: 15, name: '15th Floor' },
+  { levelNumber: 16, name: '16th Floor' },
+  { levelNumber: 17, name: '17th Floor' },
+  { levelNumber: 18, name: '18th Floor' },
+  { levelNumber: 19, name: '19th Floor' },
+  { levelNumber: 20, name: '20th Floor' }
+] as const;
+
+const seedFloorLevels = async (): Promise<void> => {
+  for (const floor of FLOOR_LEVELS) {
+    await prisma.floorLevel.upsert({
+      where: { name: floor.name },
+      update: {
+        levelNumber: floor.levelNumber,
+        isActive: true
+      },
+      create: {
+        name: floor.name,
+        levelNumber: floor.levelNumber,
+        isActive: true
+      }
+    });
+  }
+
+  console.log(`Floor levels seeded: ${FLOOR_LEVELS.length}`);
+};
+
 const seedAdminUser = async (): Promise<void> => {
   const email = process.env.SEED_ADMIN_EMAIL ?? 'admin@shwemal.com';
   const password = process.env.SEED_ADMIN_PASSWORD ?? 'Admin@123456';
@@ -317,6 +406,8 @@ const main = async (): Promise<void> => {
   await seedYangonLocations();
   await seedPropertyTypes();
   await seedVehicleTypes();
+  await seedAmenities();
+  await seedFloorLevels();
   await seedAdminUser();
 };
 

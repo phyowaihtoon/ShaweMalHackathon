@@ -23,11 +23,13 @@ const authTopLinks = [
   { to: '/agent-register', labelKey: 'nav.agentRegister' },
 ] as const
 
-const subLinks = [
+const publicSubLinks = [
   { to: '/finding-house', labelKey: 'nav.findingHouse' },
   { to: '/hire-moving', labelKey: 'nav.hireMoving' },
   { to: '/finding-roommates', labelKey: 'nav.findingRoommates' },
 ] as const
+
+const agentSubLink = { to: '/agent/houses', labelKey: 'nav.postHousingInformation' } as const
 
 function NavItem({ to, label, end }: { to: string; label: string; end?: boolean }) {
   return (
@@ -48,8 +50,10 @@ function NavItem({ to, label, end }: { to: string; label: string; end?: boolean 
 
 export function PublicLayout() {
   const { t } = useTranslation()
-  const { isAuthenticated, isBootstrapping } = useAuth()
+  const { isAuthenticated, isBootstrapping, user } = useAuth()
   const topLinks = isAuthenticated ? authTopLinks : guestTopLinks
+  const isAgent = Boolean(user?.roles?.includes('agent'))
+  const subLinks = isAgent ? [...publicSubLinks, agentSubLink] : [...publicSubLinks]
 
   return (
     <div className="min-h-screen bg-background">
@@ -78,11 +82,11 @@ export function PublicLayout() {
           </div>
         </div>
         <Separator />
-        <div className="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-4 py-2">
+        <nav className="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-4 py-2" aria-label="Sub">
           {subLinks.map((link) => (
             <NavItem key={link.to} to={link.to} label={t(link.labelKey)} />
           ))}
-        </div>
+        </nav>
       </header>
       <main className="mx-auto max-w-6xl px-4 py-8">
         <Outlet />

@@ -325,11 +325,32 @@ export const getMovingRequestById = async (movingRequestId: string, actor: AuthA
   const isAssignedDriver = movingRequest.assignedDriverUserId === actor.userId;
   const isAdmin = actor.roles.includes('admin');
 
-  if (!isOwner && !isAssignedDriver && !isAdmin) {
-    throw new ApiError(403, 'MOVING_REQUEST_FORBIDDEN', 'You are not allowed to view this moving request.');
+  if (isOwner || isAssignedDriver || isAdmin) {
+    return normalizeMovingRequest(movingRequest);
   }
 
-  return normalizeMovingRequest(movingRequest);
+  // Verified drivers can open available pending jobs (same pool as listAvailable).
+  const isAvailableForDrivers =
+    movingRequest.status === MovingRequestStatus.PENDING && movingRequest.assignedDriverUserId === null;
+
+  if (actor.roles.includes('driver') && isAvailableForDrivers) {
+    await ensureDriverVerified(actor.userId);
+
+    const rejectedByDriver = await prisma.movingStatusEvent.findFirst({
+      where: {
+        movingRequestId,
+        actorUserId: actor.userId,
+        eventType: MovingStatusEventType.REJECTED
+      },
+      select: { id: true }
+    });
+
+    if (!rejectedByDriver) {
+      return normalizeMovingRequest(movingRequest);
+    }
+  }
+
+  throw new ApiError(403, 'MOVING_REQUEST_FORBIDDEN', 'You are not allowed to view this moving request.');
 };
 
 export const listAvailableMovingRequestsForDriver = async (driverUserId: string) => {

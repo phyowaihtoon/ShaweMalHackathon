@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { SingleImageUploadField } from '@/components/uploads/SingleImageUploadField'
 import { masterDataApi } from '@/features/master-data/api/master-data-api'
 import { ApiRequestError } from '@/lib/api/client'
 
@@ -44,7 +45,10 @@ export function DriverRegisterPage() {
   const {
     register,
     handleSubmit,
+    watch,
+    setValue,
     setError,
+    clearErrors,
     formState: { errors, isSubmitting },
   } = useForm<DriverRegistrationFormValues>({
     defaultValues: {
@@ -64,7 +68,15 @@ export function DriverRegisterPage() {
     },
   })
 
+  const setPhotoPath = (field: keyof DriverRegistrationFormValues, path: string) => {
+    setValue(field, path, { shouldDirty: true, shouldTouch: true })
+    if (path.trim()) {
+      clearErrors(field)
+    }
+  }
+
   const onSubmit = handleSubmit(async (values) => {
+    clearErrors()
     const validationErrors = validateDriverRegistrationForm(values, t)
     const keys = Object.keys(validationErrors) as Array<keyof DriverRegistrationFormValues>
     if (keys.length > 0) {
@@ -118,6 +130,14 @@ export function DriverRegisterPage() {
       </CardHeader>
       <CardContent>
         <form className="grid gap-4 sm:grid-cols-2" onSubmit={onSubmit} noValidate>
+          {/* Keep upload paths registered so handleSubmit includes them */}
+          <input type="hidden" {...register('nrcFrontPhotoPath')} />
+          <input type="hidden" {...register('nrcBackPhotoPath')} />
+          <input type="hidden" {...register('drivingLicensePhotoPath')} />
+          <input type="hidden" {...register('profilePhotoPath')} />
+          <input type="hidden" {...register('vehiclePhotoPath')} />
+          <input type="hidden" {...register('wheelTaxPhotoPath')} />
+
           <Field label={t('auth.name')} error={errors.name?.message}>
             <Input {...register('name')} />
           </Field>
@@ -131,16 +151,36 @@ export function DriverRegisterPage() {
             <Input {...register('phone')} />
           </Field>
           <Field label={t('driver.nrcFrontPhotoPath')} error={errors.nrcFrontPhotoPath?.message} className="sm:col-span-2">
-            <Input placeholder={t('agent.pathPlaceholder')} {...register('nrcFrontPhotoPath')} />
+            <SingleImageUploadField
+              path={watch('nrcFrontPhotoPath')}
+              onChange={(path) => setPhotoPath('nrcFrontPhotoPath', path)}
+              category="docs"
+              error={errors.nrcFrontPhotoPath?.message}
+            />
           </Field>
           <Field label={t('driver.nrcBackPhotoPath')} error={errors.nrcBackPhotoPath?.message} className="sm:col-span-2">
-            <Input placeholder={t('agent.pathPlaceholder')} {...register('nrcBackPhotoPath')} />
+            <SingleImageUploadField
+              path={watch('nrcBackPhotoPath')}
+              onChange={(path) => setPhotoPath('nrcBackPhotoPath', path)}
+              category="docs"
+              error={errors.nrcBackPhotoPath?.message}
+            />
           </Field>
           <Field label={t('driver.drivingLicensePhotoPath')} error={errors.drivingLicensePhotoPath?.message} className="sm:col-span-2">
-            <Input placeholder={t('agent.pathPlaceholder')} {...register('drivingLicensePhotoPath')} />
+            <SingleImageUploadField
+              path={watch('drivingLicensePhotoPath')}
+              onChange={(path) => setPhotoPath('drivingLicensePhotoPath', path)}
+              category="docs"
+              error={errors.drivingLicensePhotoPath?.message}
+            />
           </Field>
           <Field label={t('driver.profilePhotoPath')} error={errors.profilePhotoPath?.message} className="sm:col-span-2">
-            <Input placeholder={t('agent.pathPlaceholder')} {...register('profilePhotoPath')} />
+            <SingleImageUploadField
+              path={watch('profilePhotoPath')}
+              onChange={(path) => setPhotoPath('profilePhotoPath', path)}
+              category="profile"
+              error={errors.profilePhotoPath?.message}
+            />
           </Field>
           <Field label={t('driver.currentAddress')} error={errors.currentAddress?.message} className="sm:col-span-2">
             <Input {...register('currentAddress')} />
@@ -159,10 +199,20 @@ export function DriverRegisterPage() {
             <Input {...register('vehicleLicensePlateNumber')} />
           </Field>
           <Field label={t('driver.vehiclePhotoPath')} error={errors.vehiclePhotoPath?.message} className="sm:col-span-2">
-            <Input placeholder={t('agent.pathPlaceholder')} {...register('vehiclePhotoPath')} />
+            <SingleImageUploadField
+              path={watch('vehiclePhotoPath')}
+              onChange={(path) => setPhotoPath('vehiclePhotoPath', path)}
+              category="docs"
+              error={errors.vehiclePhotoPath?.message}
+            />
           </Field>
           <Field label={t('driver.wheelTaxPhotoPath')} error={errors.wheelTaxPhotoPath?.message} className="sm:col-span-2">
-            <Input placeholder={t('agent.pathPlaceholder')} {...register('wheelTaxPhotoPath')} />
+            <SingleImageUploadField
+              path={watch('wheelTaxPhotoPath')}
+              onChange={(path) => setPhotoPath('wheelTaxPhotoPath', path)}
+              category="docs"
+              error={errors.wheelTaxPhotoPath?.message}
+            />
           </Field>
 
           {formError ? <p className="text-sm text-destructive sm:col-span-2">{formError}</p> : null}

@@ -23,7 +23,7 @@ function baseValues(overrides: Partial<AgentHouseFormValues> = {}): AgentHouseFo
     contactPhoneNumber: '0999999999',
     cityId: 'c1',
     stateId: 's1',
-    image1: 'uploads/house-1.jpg',
+    image1: 'uploads/houses/11111111-2222-3333-4444-555555555555.jpg',
     amenityIds: ['a1'],
     ...overrides,
   }
@@ -35,14 +35,16 @@ describe('agent house form validation', () => {
     const errors = validateAgentHouseForm(values, t)
 
     expect(errors).toEqual({})
-    expect(collectImagePaths(values)).toEqual(['uploads/house-1.jpg'])
+    expect(collectImagePaths(values)).toEqual([
+      'uploads/houses/11111111-2222-3333-4444-555555555555.jpg',
+    ])
     expect(toAgentHouseInput(values)).toMatchObject({
       title: 'Sunny Flat',
       postChannel: 'agent',
       propertyTypeId: 'pt1',
       monthlyFees: 300000,
       bedrooms: 2,
-      imagePaths: ['uploads/house-1.jpg'],
+      imagePaths: ['uploads/houses/11111111-2222-3333-4444-555555555555.jpg'],
       amenityIds: ['a1'],
     })
   })

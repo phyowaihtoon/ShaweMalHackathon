@@ -766,7 +766,7 @@ The `backend-api/` project implements the server-side scope of this specificatio
 - MD-010 Role master data managed at `/admin/master-data/roles`
 
 ### Intentional implementation choices
-- Document and image fields are stored as server-side path strings; dedicated binary upload endpoints are deferred to a later increment.
+- Document and image fields are stored as server-side path strings after binary upload to local disk (`POST /api/v1/uploads`); see `FileUploadSpecification.md`. Cloud object storage remains future scope.
 - Email/SMS notification channels remain future scope; in-app notifications are implemented (FR-NOTI-001 partial).
 - Home-page news content returns a static starter item until CMS/content module is added.
 
@@ -820,16 +820,24 @@ The `frontend-app/` project is an independent Vite + React + TypeScript applicat
 - Admin layout nav: Dashboard, Verifications, Users, Moving Assign, Master Data, Reports. `AdminAuthGuard` continues to require `admin` role.
 
 ### Increment D implemented (agent housing CRUD + polish)
-- **FR-AGENT-002..003**: Agent-role public sub-header link **Post Housing Information** and UserMenu link to `/agent/houses`. List own houses via `GET /agent/houses`. Create/edit forms cover §8.3 fields aligned with `agentHouseCreateValidator` (`POST/PATCH /agent/houses`, `DELETE /agent/houses/:id`). Master-data dropdowns: property-types, cities, states, contract-types, floor-levels, amenities. Image fields are path strings (no binary upload). Unverified agents see a clear banner; create/edit/delete stay disabled while backend enforces `AGENT_NOT_VERIFIED`.
+- **FR-AGENT-002..003**: Agent-role public sub-header link **Post Housing Information** and UserMenu link to `/agent/houses`. List own houses via `GET /agent/houses`. Create/edit forms cover §8.3 fields aligned with `agentHouseCreateValidator` (`POST/PATCH /agent/houses`, `DELETE /agent/houses/:id`). Master-data dropdowns: property-types, cities, states, contract-types, floor-levels, amenities. Image fields initially used path strings (binary upload added in Increment E). Unverified agents see a clear banner; create/edit/delete stay disabled while backend enforces `AGENT_NOT_VERIFIED`.
 - About Us page copy polished; UserMenu also links Agent Register for discoverability.
 
+### Increment E implemented (local-disk file upload)
+- Shared upload API: `POST /api/v1/uploads?category=houses|moving|docs|profile` stores files under `backend-api/uploads/` (no cloud).
+- Public static serving for `houses` / `moving` / `profile`; docs blocked from static and served via `GET /api/v1/files/docs/:filename` (owner/admin).
+- Domain validators require `uploads/{category}/...` path format.
+- Frontend file pickers wired for: agent house images, hire-moving cargo photos, profile picture, agent NRC docs, driver registration docs/vehicle/profile photos.
+- Display: house cards/details, moving request detail, driver job cargo photos, profile/roommate avatars resolve public upload URLs.
+- Admin verifications: `GET /admin/agents/:userId` and `GET /admin/drivers/:userId` load registration docs; protected docs preview via gated file API.
+- Spec: `FileUploadSpecification.md` / `.html`.
+
 ### Intentional choices / deferred
-- Document/image fields remain path-string placeholders (no binary upload UI).
 - Moving create body does not send `bookingId`/`houseId` because the backend create contract does not accept them; deep-link context is UI-only.
 - Roommate housing select uses public `GET /houses` list (practical substitute until a dedicated “my houses / bookable houses” endpoint exists).
 - Driver assigned-job listing is not exposed by the backend; workspace focuses on available PENDING requests plus detail-by-id after accept. Gap: no `GET /driver/requests/assigned` (or equivalent) for post-accept job inbox.
 - **Intentional backend limitation (Increment C):** There is no admin list/queue endpoint for pending agents, pending drivers, users, or unassigned moving requests. Admin UX uses userId/requestId entry forms and reports overview counts instead of selectable queues. A future backend increment can add list endpoints without changing the action APIs already wired.
-- **Intentional gaps retained after Increment D:** no admin selectable list queues; no binary upload UI; no report export (PDF/Excel/CSV); email/SMS notification channels remain future scope; richer notification/channel features beyond in-app mark-read stay deferred.
+- **Intentional gaps retained after Increment E:** no admin selectable list queues; no report export (PDF/Excel/CSV); email/SMS notification channels remain future scope; cloud object storage remains future scope.
 - No mock feature flags; UI adapts to real backend contracts.
 
 ### Implementation status
@@ -838,3 +846,4 @@ The `frontend-app/` project is an independent Vite + React + TypeScript applicat
 - Increment B public-portal modules wired with Vitest coverage for moving form validation, roommate browse (mocked), and profile page render; `npm test` + `npm run build` expected green
 - Increment C admin portal wired with Vitest coverage for admin guard, reports render (mocked fetch), and master-data list (mocked fetch); `npm test` + `npm run build` expected green
 - Increment D agent housing CRUD wired with Vitest coverage for houses list render (mocked) and form validation; `npm test` + `npm run build` expected green
+- Increment E local upload foundation + house/moving/profile/registration upload UI + public image display; upload integration tests + Vitest coverage; `npm test` expected green

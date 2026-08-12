@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { movingApi } from '@/features/moving/api/moving-api'
 import { ApiRequestError } from '@/lib/api/client'
+import { resolvePublicUploadUrl } from '@/lib/uploads/resolve-public-url'
 
 import { driverJobsApi, type DriverStatusInput } from '../api/driver-api'
 
@@ -193,11 +194,23 @@ export function DriverJobsPage() {
           </p>
           <div>
             <p className="font-medium">{t('moving.photosTitle')}</p>
-            <ul className="mt-1 list-disc pl-5">
-              {request.photos.map((photo) => (
-                <li key={photo.id ?? photo.photoPath}>{photo.photoPath}</li>
-              ))}
-            </ul>
+            {request.photos.length === 0 ? (
+              <p className="mt-1 text-muted-foreground">{t('moving.emptyPhotos')}</p>
+            ) : (
+              <ul className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {request.photos.map((photo) => {
+                  const src = resolvePublicUploadUrl(photo.photoPath) ?? photo.photoPath
+                  return (
+                    <li
+                      key={photo.id ?? photo.photoPath}
+                      className="aspect-[4/3] overflow-hidden rounded-md border border-input bg-muted"
+                    >
+                      <img src={src} alt="" className="h-full w-full object-cover" />
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
           </div>
 
           {canRespond ? (

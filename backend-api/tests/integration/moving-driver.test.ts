@@ -342,6 +342,25 @@ jest.mock('../../src/prisma/client', () => {
       })
     },
     movingStatusEvent: {
+      findFirst: jest.fn(async ({ where }: { where: any }) => {
+        const found = movingStatusEvents.find((event) => {
+          if (where?.movingRequestId && event.movingRequestId !== where.movingRequestId) {
+            return false;
+          }
+
+          if (where?.actorUserId && event.actorUserId !== where.actorUserId) {
+            return false;
+          }
+
+          if (where?.eventType && event.eventType !== where.eventType) {
+            return false;
+          }
+
+          return true;
+        });
+
+        return found ? { id: found.id } : null;
+      }),
       create: jest.fn(async ({ data }: { data: any }) => {
         const created: MockMovingStatusEvent = {
           id: `moving-event-${movingStatusEvents.length + 1}`,
@@ -525,7 +544,7 @@ const createMovingPayload = () => ({
   vehicleTypeId: 'vt-truck',
   remarks: 'Handle fragile items carefully',
   damageChecklist: 'Existing small scratch on wardrobe',
-  photos: ['/uploads/photo-1.jpg', '/uploads/photo-2.jpg'],
+  photos: ['uploads/moving/photo-1.jpg', 'uploads/moving/photo-2.jpg'],
   inventoryItems: [
     { category: 'Bedroom', itemName: 'Wardrobe', count: 1 },
     { category: 'Kitchen', itemName: 'Refrigerator', count: 1 },
@@ -561,6 +580,21 @@ describe('Moving and driver workflow integration', () => {
       .set('Authorization', `Bearer ${unverifiedDriverToken}`);
 
     expect(unverifiedResponse.status).toBe(403);
+
+    const movingRequestId = createResponse.body.data.movingRequest.id as string;
+
+    const driverDetailView = await request(app)
+      .get(`/api/v1/moving/requests/${movingRequestId}`)
+      .set('Authorization', `Bearer ${driver1Token}`);
+
+    expect(driverDetailView.status).toBe(200);
+    expect(driverDetailView.body.data.movingRequest.id).toBe(movingRequestId);
+
+    const unverifiedDetailView = await request(app)
+      .get(`/api/v1/moving/requests/${movingRequestId}`)
+      .set('Authorization', `Bearer ${unverifiedDriverToken}`);
+
+    expect(unverifiedDetailView.status).toBe(403);
   });
 
   it('allows first driver accept and rejects second accept attempt', async () => {

@@ -1,4 +1,8 @@
+import path from 'node:path';
+
 import dotenv from 'dotenv';
+
+import { DEFAULT_UPLOAD_ALLOWED_MIME } from '../utils/upload-path';
 
 dotenv.config();
 
@@ -19,6 +23,19 @@ const parseNumber = (value: string | undefined, fallback: number): number => {
   return parsed;
 };
 
+const parsePositiveInt = (value: string | undefined, fallback: number, key: string): number => {
+  if (!value) {
+    return fallback;
+  }
+
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    throw new Error(`${key} must be a positive integer.`);
+  }
+
+  return parsed;
+};
+
 const requireEnv = (key: string): string => {
   const value = process.env[key];
   if (!value) {
@@ -33,6 +50,11 @@ if (!ALLOWED_ALGORITHMS.includes(jwtAlgorithmRaw as JwtAlgorithm)) {
   throw new Error(`Unsupported JWT_ALGORITHM: ${jwtAlgorithmRaw}`);
 }
 
+const uploadAllowedMime = (process.env.UPLOAD_ALLOWED_MIME ?? DEFAULT_UPLOAD_ALLOWED_MIME.join(','))
+  .split(',')
+  .map((item) => item.trim())
+  .filter(Boolean);
+
 export const env = {
   nodeEnv: process.env.NODE_ENV ?? 'development',
   port: Number(process.env.PORT ?? 4000),
@@ -41,5 +63,10 @@ export const env = {
   jwtExpiresIn: process.env.JWT_EXPIRES_IN ?? '15m',
   jwtAlgorithm: jwtAlgorithmRaw as JwtAlgorithm,
   corsOrigin: process.env.CORS_ORIGIN ?? '*',
-  bcryptSaltRounds: parseNumber(process.env.BCRYPT_SALT_ROUNDS, 12)
+  bcryptSaltRounds: parseNumber(process.env.BCRYPT_SALT_ROUNDS, 12),
+  uploadRoot: process.env.UPLOAD_ROOT
+    ? path.resolve(process.env.UPLOAD_ROOT)
+    : path.resolve(process.cwd(), 'uploads'),
+  uploadMaxBytes: parsePositiveInt(process.env.UPLOAD_MAX_BYTES, 5 * 1024 * 1024, 'UPLOAD_MAX_BYTES'),
+  uploadAllowedMime
 } as const;

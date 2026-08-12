@@ -38,6 +38,20 @@ Copy `.env.example` to `.env` and set:
 - `JWT_EXPIRES_IN`
 - `CORS_ORIGIN`
 - `PORT`
+- `UPLOAD_ROOT` (optional; defaults to `./uploads`)
+- `UPLOAD_MAX_BYTES` (optional; default 5MB)
+- `UPLOAD_ALLOWED_MIME` (optional; jpeg/png/webp)
+
+## Local file uploads
+
+Uploads are stored on local disk (no cloud in this version). See `FileUploadSpecification.md`.
+
+- `POST /api/v1/uploads?category=houses|moving|docs|profile` — multipart field `files` (auth required); returns `{ paths: string[] }`
+- Public static: `GET /uploads/houses|moving|profile/...`
+- Protected docs: `GET /api/v1/files/docs/:filename` (owner or admin)
+- Domain APIs still accept path strings such as `uploads/houses/{uuid}.jpg`
+
+Ensure `uploads/{houses,moving,docs,profile}` exist (created on boot). Binaries are gitignored.
 
 ## Database setup
 
@@ -59,6 +73,8 @@ Copy `.env.example` to `.env` and set:
 | Agent | `POST /agent/profile`, CRUD `/agent/houses` |
 | Driver | profile + moving request accept/reject/eta/status |
 | Moving | `POST /moving/requests`, `GET /moving/requests/:id` |
+| Uploads | `POST /uploads?category=...` |
+| Files | `GET /files/docs/:filename` (protected) |
 | Roommates | `GET/POST /roommates` |
 | Wishlist | `GET/POST/DELETE /wishlist/:houseId` |
 | Reviews | `GET/POST /reviews` |
@@ -85,5 +101,5 @@ Implemented requirement groups:
 
 ## Notes
 
-- File uploads store document/image paths; clients upload binaries separately and send paths in API payloads.
-- Integration tests mock Prisma; run migrations against MySQL for full database verification.
+- Local-disk binary upload is available via `POST /uploads`; domain create/update APIs still persist returned path strings.
+- Integration tests mock Prisma (except upload disk tests); run migrations against MySQL for full database verification.

@@ -7,6 +7,7 @@ import { useAuth } from '@/app/providers/AuthProvider'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ApiRequestError } from '@/lib/api/client'
+import { resolvePublicUploadUrl } from '@/lib/uploads/resolve-public-url'
 
 import { housesApi } from '../api/houses-api'
 import { MovingUpsellDialog } from '../components/MovingUpsellDialog'
@@ -125,11 +126,14 @@ export function HouseDetailsPage() {
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {house.images.length > 0 ? (
-          house.images.map((image) => (
-            <div key={image.id ?? image.imagePath} className="aspect-[16/10] overflow-hidden rounded-xl bg-muted">
-              <img src={image.imagePath} alt={house.title} className="h-full w-full object-cover" />
-            </div>
-          ))
+          house.images.map((image) => {
+            const src = resolvePublicUploadUrl(image.imagePath) ?? image.imagePath
+            return (
+              <div key={image.id ?? image.imagePath} className="aspect-[16/10] overflow-hidden rounded-xl bg-muted">
+                <img src={src} alt={house.title} className="h-full w-full object-cover" />
+              </div>
+            )
+          })
         ) : (
           <div className="flex aspect-[16/10] items-center justify-center rounded-xl bg-muted text-sm text-muted-foreground">
             {t('houses.noPhoto')}

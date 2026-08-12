@@ -13,6 +13,8 @@ export type MovingRequestFormValues = {
   photo3: string
   photo4: string
   photo5: string
+  /** Screen-only total; not persisted as its own DB column. */
+  totalInventoryItems: string
   inventoryCounts: Record<string, number>
 }
 
@@ -22,20 +24,40 @@ export function collectPhotoPaths(values: MovingRequestFormValues): string[] {
     .filter(Boolean)
 }
 
-export function buildInventoryItems(counts: Record<string, number>): MovingInventoryItem[] {
-  return MOVING_INVENTORY_CATALOG.map((item) => ({
+export function sumInventoryCounts(counts: Record<string, number>): number {
+  return Object.values(counts).reduce((sum, value) => sum + (Number(value) || 0), 0)
+}
+
+export function buildInventoryItems(
+  counts: Record<string, number>,
+  totalInventoryItems?: number,
+): MovingInventoryItem[] {
+  const items = MOVING_INVENTORY_CATALOG.map((item) => ({
     category: item.category,
     itemName: item.itemName,
     count: Number(counts[item.key] ?? 0),
   })).filter((item) => item.count > 0)
+
+  if (items.length > 0) {
+    return items
+  }
+
+  // Backend requires at least one inventory row; use screen total when no catalog lines were filled.
+  const total = Math.max(0, Math.floor(Number(totalInventoryItems) || 0))
+  if (total > 0) {
+    return [{ category: 'other', itemName: 'Total inventory items', count: total }]
+  }
+
+  return []
 }
 
 export function validateMovingRequestForm(
   values: MovingRequestFormValues,
   t: (key: string) => string,
 ) {
-  const errors: Partial<Record<keyof MovingRequestFormValues | 'photos' | 'inventoryCounts', string>> =
-    {}
+  const errors: Partial<
+    Record<keyof MovingRequestFormValues | 'photos' | 'totalInventoryItems', string>
+  > = {}
 
   if (!values.pickupAddress.trim()) errors.pickupAddress = t('auth.required')
   if (!values.dropoffAddress.trim()) errors.dropoffAddress = t('auth.required')
@@ -49,9 +71,9 @@ export function validateMovingRequestForm(
     errors.photos = t('moving.photosMax')
   }
 
-  const inventoryItems = buildInventoryItems(values.inventoryCounts)
-  if (inventoryItems.length === 0) {
-    errors.inventoryCounts = t('moving.inventoryRequired')
+  const total = Number(values.totalInventoryItems)
+  if (!Number.isFinite(total) || total <= 0 || !Number.isInteger(total)) {
+    errors.totalInventoryItems = t('moving.totalInventoryRequired')
   }
 
   return errors

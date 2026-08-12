@@ -1,6 +1,8 @@
 import { apiRequest } from '@/lib/api/client'
 
 import type {
+  AdminAgentRegistration,
+  AdminDriverRegistration,
   AdminOverviewReport,
   AdminSafeUser,
   CreateUserInput,
@@ -43,11 +45,19 @@ export const adminApi = {
     })
   },
 
+  getAgentRegistration(userId: string) {
+    return apiRequest<AdminAgentRegistration>(`/admin/agents/${userId}`)
+  },
+
   updateDriverVerification(userId: string, status: VerificationAction) {
     return apiRequest<{ user: AdminSafeUser }>(`/admin/drivers/${userId}/verification`, {
       method: 'PATCH',
       body: { status },
     })
+  },
+
+  getDriverRegistration(userId: string) {
+    return apiRequest<AdminDriverRegistration>(`/admin/drivers/${userId}`)
   },
 
   assignMovingRequest(requestId: string, driverUserId: string) {

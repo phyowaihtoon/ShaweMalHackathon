@@ -1,5 +1,6 @@
 import { VerificationStatus } from '@prisma/client';
 
+import { prisma } from '../prisma/client';
 import { ApiError } from '../utils/api-error';
 import { hashPassword } from '../utils/password';
 import { writeAuditLog } from './audit.service';
@@ -115,4 +116,93 @@ export const adminUpdateVerification = async (input: UpdateVerificationInput) =>
   });
 
   return updated;
+};
+
+export const getAdminAgentRegistration = async (userId: string) => {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: {
+      userRoles: { include: { role: true } },
+      agentProfile: true
+    }
+  });
+
+  if (!user) {
+    throw new ApiError(404, 'USER_NOT_FOUND', 'User not found.');
+  }
+
+  if (!user.agentProfile) {
+    throw new ApiError(404, 'AGENT_PROFILE_NOT_FOUND', 'Agent registration profile was not found for this user.');
+  }
+
+  return {
+    user: {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      verificationStatus: user.verificationStatus,
+      roles: user.userRoles.map((item) => item.role.name)
+    },
+    profile: {
+      id: user.agentProfile.id,
+      name: user.agentProfile.name,
+      nrc: user.agentProfile.nrc,
+      nrcFrontPhotoPath: user.agentProfile.nrcFrontPhotoPath,
+      nrcBackPhotoPath: user.agentProfile.nrcBackPhotoPath,
+      email: user.agentProfile.email,
+      phone: user.agentProfile.phone,
+      address1: user.agentProfile.address1,
+      address2: user.agentProfile.address2,
+      cityId: user.agentProfile.cityId,
+      stateId: user.agentProfile.stateId,
+      serviceRegionId: user.agentProfile.serviceRegionId,
+      hasRentingExperience: user.agentProfile.hasRentingExperience
+    }
+  };
+};
+
+export const getAdminDriverRegistration = async (userId: string) => {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: {
+      userRoles: { include: { role: true } },
+      driverProfile: true
+    }
+  });
+
+  if (!user) {
+    throw new ApiError(404, 'USER_NOT_FOUND', 'User not found.');
+  }
+
+  if (!user.driverProfile) {
+    throw new ApiError(404, 'DRIVER_PROFILE_NOT_FOUND', 'Driver registration profile was not found for this user.');
+  }
+
+  return {
+    user: {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      verificationStatus: user.verificationStatus,
+      roles: user.userRoles.map((item) => item.role.name)
+    },
+    profile: {
+      id: user.driverProfile.id,
+      name: user.driverProfile.name,
+      companyName: user.driverProfile.companyName,
+      nrc: user.driverProfile.nrc,
+      nrcFrontPhotoPath: user.driverProfile.nrcFrontPhotoPath,
+      nrcBackPhotoPath: user.driverProfile.nrcBackPhotoPath,
+      drivingLicensePhotoPath: user.driverProfile.drivingLicensePhotoPath,
+      profilePhotoPath: user.driverProfile.profilePhotoPath,
+      phone: user.driverProfile.phone,
+      currentAddress: user.driverProfile.currentAddress,
+      vehicleTypeId: user.driverProfile.vehicleTypeId,
+      vehicleLicensePlateNumber: user.driverProfile.vehicleLicensePlateNumber,
+      vehiclePhotoPath: user.driverProfile.vehiclePhotoPath,
+      wheelTaxPhotoPath: user.driverProfile.wheelTaxPhotoPath
+    }
+  };
 };

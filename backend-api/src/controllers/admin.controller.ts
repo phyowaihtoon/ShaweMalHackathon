@@ -1,7 +1,13 @@
 import { Request, Response } from 'express';
 
 import { getAdminOverviewReport } from '../services/admin-report.service';
-import { adminCreateUser, adminUpdateUserRoles, adminUpdateVerification } from '../services/admin.service';
+import {
+  adminCreateUser,
+  adminUpdateUserRoles,
+  adminUpdateVerification,
+  getAdminAgentRegistration,
+  getAdminDriverRegistration
+} from '../services/admin.service';
 import { assignMovingRequestByAdmin } from '../services/moving.service';
 import { ApiError } from '../utils/api-error';
 import { sendSuccess } from '../utils/api-response';
@@ -96,6 +102,18 @@ export const adminUpdateDriverVerificationController = async (req: Request, res:
   });
 
   sendSuccess(res, 200, 'Driver verification updated successfully', { user: toSafeUser(user) });
+};
+
+export const adminGetAgentRegistrationController = async (req: Request, res: Response): Promise<void> => {
+  const userId = String(req.params.userId ?? '');
+  const result = await getAdminAgentRegistration(userId);
+  sendSuccess(res, 200, 'Agent registration fetched successfully', result);
+};
+
+export const adminGetDriverRegistrationController = async (req: Request, res: Response): Promise<void> => {
+  const userId = String(req.params.userId ?? '');
+  const result = await getAdminDriverRegistration(userId);
+  sendSuccess(res, 200, 'Driver registration fetched successfully', result);
 };
 
 export const adminAssignMovingRequestController = async (req: Request, res: Response): Promise<void> => {

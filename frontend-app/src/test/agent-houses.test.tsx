@@ -64,12 +64,25 @@ describe('agent houses list', () => {
                     propertyType: { id: 'pt1', name: 'Condominium' },
                     city: { id: 'c1', name: 'Yangon' },
                     state: { id: 's1', name: 'Yangon' },
-                    images: [{ imagePath: 'uploads/h1.jpg', sortOrder: 1 }],
+                    images: [
+                      {
+                        imagePath: 'uploads/houses/11111111-2222-3333-4444-555555555555.jpg',
+                        sortOrder: 1,
+                      },
+                    ],
                     amenities: [],
                   },
                 ],
               },
             }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          )
+        }
+
+        // Ignore unexpected upload calls from other screens; keep agent list green.
+        if (url.includes('/uploads')) {
+          return new Response(
+            JSON.stringify({ success: true, message: 'ok', data: { paths: [] } }),
             { status: 200, headers: { 'Content-Type': 'application/json' } },
           )
         }

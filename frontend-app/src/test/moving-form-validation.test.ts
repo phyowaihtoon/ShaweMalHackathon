@@ -18,11 +18,12 @@ function baseValues(overrides: Partial<MovingRequestFormValues> = {}): MovingReq
     vehicleTypeId: 'vt1',
     remarks: '',
     damageChecklist: '',
-    photo1: 'uploads/p1.jpg',
+    photo1: 'uploads/moving/p1.jpg',
     photo2: '',
     photo3: '',
     photo4: '',
     photo5: '',
+    totalInventoryItems: '2',
     inventoryCounts: {
       ...emptyInventoryCounts(),
       bedroom_single_bed: 2,
@@ -37,13 +38,13 @@ describe('moving request form validation', () => {
     const errors = validateMovingRequestForm(values, t)
 
     expect(errors).toEqual({})
-    expect(collectPhotoPaths(values)).toEqual(['uploads/p1.jpg'])
-    expect(buildInventoryItems(values.inventoryCounts)).toEqual([
+    expect(collectPhotoPaths(values)).toEqual(['uploads/moving/p1.jpg'])
+    expect(buildInventoryItems(values.inventoryCounts, Number(values.totalInventoryItems))).toEqual([
       { category: 'bedroom', itemName: 'Single bed', count: 2 },
     ])
   })
 
-  it('requires addresses, date, vehicle, photos, and inventory', () => {
+  it('requires addresses, date, vehicle, photos, and total inventory items > 0', () => {
     const errors = validateMovingRequestForm(
       baseValues({
         pickupAddress: '',
@@ -51,6 +52,7 @@ describe('moving request form validation', () => {
         moveInDate: '',
         vehicleTypeId: '',
         photo1: '',
+        totalInventoryItems: '0',
         inventoryCounts: emptyInventoryCounts(),
       }),
       t,
@@ -61,6 +63,18 @@ describe('moving request form validation', () => {
     expect(errors.moveInDate).toBe('auth.required')
     expect(errors.vehicleTypeId).toBe('auth.required')
     expect(errors.photos).toBe('moving.photosRequired')
-    expect(errors.inventoryCounts).toBe('moving.inventoryRequired')
+    expect(errors.totalInventoryItems).toBe('moving.totalInventoryRequired')
+    expect(errors.inventoryCounts).toBeUndefined()
+  })
+
+  it('passes when total inventory is set even if catalog counts are empty', () => {
+    const values = baseValues({
+      totalInventoryItems: '5',
+      inventoryCounts: emptyInventoryCounts(),
+    })
+    expect(validateMovingRequestForm(values, t)).toEqual({})
+    expect(buildInventoryItems(values.inventoryCounts, 5)).toEqual([
+      { category: 'other', itemName: 'Total inventory items', count: 5 },
+    ])
   })
 })

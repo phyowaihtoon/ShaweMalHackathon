@@ -24,3 +24,15 @@ Thumbs.db
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+# Local uploaded binaries
+uploads/**
+!uploads/.gitkeep
+!uploads/houses/
+!uploads/moving/
+!uploads/docs/
+!uploads/profile/
+!uploads/houses/.gitkeep
+!uploads/moving/.gitkeep
+!uploads/docs/.gitkeep
+!uploads/profile/.gitkeep

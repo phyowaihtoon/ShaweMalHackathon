@@ -106,8 +106,8 @@ describe('Completion increment modules', () => {
       .send({
         name: 'Agent Applicant',
         nrc: '12/YGN(N)123456',
-        nrcFrontPhotoPath: '/docs/nrc-front.jpg',
-        nrcBackPhotoPath: '/docs/nrc-back.jpg',
+        nrcFrontPhotoPath: 'uploads/docs/nrc-front.jpg',
+        nrcBackPhotoPath: 'uploads/docs/nrc-back.jpg',
         email: 'agent@example.com',
         phone: '099999999',
         address1: 'Street 1',

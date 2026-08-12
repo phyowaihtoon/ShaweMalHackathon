@@ -9,7 +9,9 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { SingleImageUploadField } from '@/components/uploads/SingleImageUploadField'
 import { ApiRequestError } from '@/lib/api/client'
+import { resolvePublicUploadUrl } from '@/lib/uploads/resolve-public-url'
 
 import { profileApi, reviewsApi } from '../api/profile-api'
 
@@ -171,6 +173,16 @@ export function ProfilePage() {
           <CardTitle className="text-lg">{t('profile.accountTitle')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
+          {(() => {
+            const avatarSrc = resolvePublicUploadUrl(profile.profilePicturePath)
+            return avatarSrc ? (
+              <img
+                src={avatarSrc}
+                alt=""
+                className="size-20 rounded-full border border-input object-cover"
+              />
+            ) : null
+          })()}
           <p>
             <span className="font-medium">{t('auth.email')}: </span>
             {profile.email}
@@ -208,6 +220,7 @@ export function ProfilePage() {
             })}
             noValidate
           >
+            <input type="hidden" {...profileForm.register('profilePicturePath')} />
             <Field label={t('auth.name')}>
               <Input {...profileForm.register('name')} />
             </Field>
@@ -215,7 +228,19 @@ export function ProfilePage() {
               <Input {...profileForm.register('phone')} />
             </Field>
             <Field label={t('profile.profilePicturePath')}>
-              <Input placeholder={t('agent.pathPlaceholder')} {...profileForm.register('profilePicturePath')} />
+              <SingleImageUploadField
+                path={profileForm.watch('profilePicturePath')}
+                onChange={(nextPath) => {
+                  profileForm.setValue('profilePicturePath', nextPath, {
+                    shouldDirty: true,
+                    shouldTouch: true,
+                  })
+                  if (nextPath.trim()) {
+                    profileForm.clearErrors('profilePicturePath')
+                  }
+                }}
+                category="profile"
+              />
             </Field>
             {profileError ? <p className="text-sm text-destructive">{profileError}</p> : null}
             {profileMessage ? <p className="text-sm text-primary">{profileMessage}</p> : null}

@@ -3,6 +3,8 @@ import { Router } from 'express';
 import {
   adminAssignMovingRequestController,
   adminCreateUserController,
+  adminGetAgentRegistrationController,
+  adminGetDriverRegistrationController,
   adminReportsOverviewController,
   adminUpdateAgentVerificationController,
   adminUpdateDriverVerificationController,
@@ -14,6 +16,7 @@ import { asyncHandler } from '../../utils/async-handler';
 import {
   adminAssignMovingRequestValidator,
   adminCreateUserValidator,
+  adminRegistrationLookupValidator,
   adminUpdateRolesValidator,
   adminVerificationValidator
 } from '../../validators/admin.validator';
@@ -24,11 +27,23 @@ adminRouter.use(requireAuth, requireAdmin);
 
 adminRouter.post('/users', adminCreateUserValidator, validateMiddleware, asyncHandler(adminCreateUserController));
 adminRouter.patch('/users/:id/roles', adminUpdateRolesValidator, validateMiddleware, asyncHandler(adminUpdateUserRolesController));
+adminRouter.get(
+  '/agents/:userId',
+  adminRegistrationLookupValidator,
+  validateMiddleware,
+  asyncHandler(adminGetAgentRegistrationController)
+);
 adminRouter.patch(
   '/agents/:userId/verification',
   adminVerificationValidator,
   validateMiddleware,
   asyncHandler(adminUpdateAgentVerificationController)
+);
+adminRouter.get(
+  '/drivers/:userId',
+  adminRegistrationLookupValidator,
+  validateMiddleware,
+  asyncHandler(adminGetDriverRegistrationController)
 );
 adminRouter.patch(
   '/drivers/:userId/verification',

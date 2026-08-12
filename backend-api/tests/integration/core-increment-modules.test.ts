@@ -789,7 +789,7 @@ describe('Core increment modules', () => {
       .set('Authorization', authHeader('user-normal', ['normal']))
       .send({
         name: 'Updated User',
-        profilePicturePath: '/profiles/u1.jpg'
+        profilePicturePath: 'uploads/profile/u1.jpg'
       });
 
     expect(patchResponse.status).toBe(200);

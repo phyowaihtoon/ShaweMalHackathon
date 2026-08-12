@@ -102,6 +102,14 @@ Provider order: Theme → I18n → Query → Auth → Router.
 | --- | --- | --- |
 | Agent housing CRUD | FR-AGENT-002..003 | `/agent/houses` list/create/edit/delete against `/agent/houses` APIs; public sub-header **Post Housing Information** + UserMenu link for `agent` role; unverified agents see a clear verification banner and mutations stay disabled |
 
+### Increment E
+
+| Area | Requirement IDs | Notes |
+| --- | --- | --- |
+| Local file upload | §8.3–8.6, FR-PROFILE-001, NFR media | Shared `POST /uploads`; house/moving/profile/docs file pickers; public URL helper; admin protected-doc preview via `GET /admin/agents|drivers/:userId` + `/files/docs/:filename` |
+
+See repo root `FileUploadSpecification.md`.
+
 ### Key routes
 
 - `/` Home

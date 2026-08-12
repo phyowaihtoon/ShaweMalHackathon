@@ -1,5 +1,7 @@
 import { body } from 'express-validator';
 
+import { optionalUploadedPathValidator } from './upload-path.validator';
+
 export const updateProfileValidator = [
   body('name').optional().isString().withMessage('name must be a string.').trim().isLength({ min: 1, max: 120 }).withMessage('name must be between 1 and 120 characters.'),
   body('phone')
@@ -9,12 +11,7 @@ export const updateProfileValidator = [
     .trim()
     .isLength({ min: 7, max: 20 })
     .withMessage('phone length must be between 7 and 20.'),
-  body('profilePicturePath')
-    .optional({ values: 'null' })
-    .isString()
-    .withMessage('profilePicturePath must be a string when provided.')
-    .isLength({ max: 500 })
-    .withMessage('profilePicturePath must be at most 500 characters.'),
+  optionalUploadedPathValidator('profilePicturePath', 'profile'),
   body().custom((_, { req }) => {
     const hasAnyField = req.body.name !== undefined || req.body.phone !== undefined || req.body.profilePicturePath !== undefined;
     if (!hasAnyField) {

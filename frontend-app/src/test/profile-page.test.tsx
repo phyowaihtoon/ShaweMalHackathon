@@ -55,7 +55,7 @@ describe('profile page', () => {
                   name: 'Alice User',
                   email: 'alice@example.com',
                   phone: '09123456789',
-                  profilePicturePath: 'uploads/alice.jpg',
+                  profilePicturePath: 'uploads/profile/alice.jpg',
                   verificationStatus: 'VERIFIED',
                   roles: ['normal'],
                 },

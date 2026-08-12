@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { resolvePublicUploadUrl } from '@/lib/uploads/resolve-public-url'
 
 import { movingApi } from '../api/moving-api'
 
@@ -66,10 +67,18 @@ export function MovingRequestDetailPage() {
           {request.photos.length === 0 ? (
             <p className="text-muted-foreground">{t('moving.emptyPhotos')}</p>
           ) : (
-            <ul className="list-disc space-y-1 pl-5">
-              {request.photos.map((photo) => (
-                <li key={photo.id ?? photo.photoPath}>{photo.photoPath}</li>
-              ))}
+            <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {request.photos.map((photo) => {
+                const src = resolvePublicUploadUrl(photo.photoPath) ?? photo.photoPath
+                return (
+                  <li
+                    key={photo.id ?? photo.photoPath}
+                    className="aspect-[4/3] overflow-hidden rounded-md border border-input bg-muted"
+                  >
+                    <img src={src} alt="" className="h-full w-full object-cover" />
+                  </li>
+                )
+              })}
             </ul>
           )}
         </section>

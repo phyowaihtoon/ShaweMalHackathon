@@ -438,7 +438,7 @@ const seedBaseData = () => {
     updatedAt: now
   });
 
-  houseImages.push({ id: 'img-1', houseId: 'house-1', imagePath: '/houses/1.jpg', sortOrder: 1 });
+  houseImages.push({ id: 'img-1', houseId: 'house-1', imagePath: 'uploads/houses/1.jpg', sortOrder: 1 });
   houseAmenities.push({ id: 'ha-1', houseId: 'house-1', amenityId: 'amenity-wifi' });
 };
 
@@ -517,7 +517,7 @@ describe('Housing, booking, wishlist, and agent house APIs', () => {
       cityId: 'city-1',
       stateId: 'state-1',
       availability: 'available',
-      imagePaths: ['/houses/new-1.jpg'],
+      imagePaths: ['uploads/houses/new-1.jpg'],
       amenityIds: ['amenity-wifi']
     };
 

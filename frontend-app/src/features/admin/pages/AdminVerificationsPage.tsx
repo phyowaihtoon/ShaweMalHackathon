@@ -7,10 +7,17 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { ProtectedDocImage } from '@/components/uploads/ProtectedDocImage'
 import { ApiRequestError } from '@/lib/api/client'
+import { resolvePublicUploadUrl } from '@/lib/uploads/resolve-public-url'
 
 import { adminApi } from '../api/admin-api'
-import type { AdminSafeUser, VerificationAction } from '../types'
+import type {
+  AdminAgentRegistration,
+  AdminDriverRegistration,
+  AdminSafeUser,
+  VerificationAction,
+} from '../types'
 
 const selectClassName =
   'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
@@ -20,22 +27,86 @@ type VerificationFormValues = {
   status: VerificationAction
 }
 
+function AgentDocsPreview({ registration }: { registration: AdminAgentRegistration }) {
+  const { t } = useTranslation()
+  const { user, profile } = registration
+
+  return (
+    <div className="space-y-3 rounded-md border p-3">
+      <p className="text-sm">
+        <span className="font-medium">{user.name}</span>
+        <span className="text-muted-foreground"> · {user.verificationStatus}</span>
+      </p>
+      <p className="text-xs text-muted-foreground">
+        {t('agent.nrc')}: {profile.nrc} · {profile.phone}
+      </p>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <ProtectedDocImage path={profile.nrcFrontPhotoPath} label={t('agent.nrcFrontPhotoPath')} />
+        <ProtectedDocImage path={profile.nrcBackPhotoPath} label={t('agent.nrcBackPhotoPath')} />
+      </div>
+    </div>
+  )
+}
+
+function DriverDocsPreview({ registration }: { registration: AdminDriverRegistration }) {
+  const { t } = useTranslation()
+  const { user, profile } = registration
+  const profileSrc = resolvePublicUploadUrl(profile.profilePhotoPath)
+
+  return (
+    <div className="space-y-3 rounded-md border p-3">
+      <div className="flex items-start gap-3">
+        {profileSrc ? (
+          <img
+            src={profileSrc}
+            alt=""
+            className="size-14 rounded-full object-cover border border-input"
+          />
+        ) : null}
+        <div>
+          <p className="text-sm">
+            <span className="font-medium">{user.name}</span>
+            <span className="text-muted-foreground"> · {user.verificationStatus}</span>
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {t('driver.nrc')}: {profile.nrc} · {profile.vehicleLicensePlateNumber}
+          </p>
+        </div>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <ProtectedDocImage path={profile.nrcFrontPhotoPath} label={t('driver.nrcFrontPhotoPath')} />
+        <ProtectedDocImage path={profile.nrcBackPhotoPath} label={t('driver.nrcBackPhotoPath')} />
+        <ProtectedDocImage
+          path={profile.drivingLicensePhotoPath}
+          label={t('driver.drivingLicensePhotoPath')}
+        />
+        <ProtectedDocImage path={profile.vehiclePhotoPath} label={t('driver.vehiclePhotoPath')} />
+        <ProtectedDocImage path={profile.wheelTaxPhotoPath} label={t('driver.wheelTaxPhotoPath')} />
+      </div>
+    </div>
+  )
+}
+
 function VerificationForm({
   title,
   description,
+  kind,
   onSubmitAction,
 }: {
   title: string
   description: string
+  kind: 'agent' | 'driver'
   onSubmitAction: (userId: string, status: VerificationAction) => Promise<AdminSafeUser>
 }) {
   const { t } = useTranslation()
   const [formError, setFormError] = useState<string | null>(null)
   const [successUser, setSuccessUser] = useState<AdminSafeUser | null>(null)
+  const [lookupUserId, setLookupUserId] = useState('')
 
   const {
     register,
     handleSubmit,
+    watch,
     reset,
     formState: { errors, isSubmitting },
   } = useForm<VerificationFormValues>({
@@ -43,6 +114,17 @@ function VerificationForm({
       userId: '',
       status: 'approve',
     },
+  })
+
+  const typedUserId = watch('userId')
+
+  const registrationQuery = useQuery({
+    queryKey: ['admin', kind, 'registration', lookupUserId],
+    enabled: Boolean(lookupUserId),
+    queryFn: () =>
+      kind === 'agent'
+        ? adminApi.getAgentRegistration(lookupUserId)
+        : adminApi.getDriverRegistration(lookupUserId),
   })
 
   const onSubmit = handleSubmit(async (values) => {
@@ -56,6 +138,7 @@ function VerificationForm({
       const result = await onSubmitAction(userId, values.status)
       setSuccessUser(result)
       reset({ userId: '', status: values.status })
+      setLookupUserId('')
     } catch (error) {
       if (error instanceof ApiRequestError) {
         setFormError(error.message)
@@ -75,17 +158,45 @@ function VerificationForm({
         <form className="space-y-4" onSubmit={onSubmit} noValidate>
           <div className="space-y-2">
             <Label htmlFor={`${title}-userId`}>{t('admin.verifications.userId')}</Label>
-            <Input
-              id={`${title}-userId`}
-              {...register('userId', { required: t('auth.required') })}
-              placeholder={t('admin.verifications.userIdPlaceholder')}
-            />
+            <div className="flex flex-wrap gap-2">
+              <Input
+                id={`${title}-userId`}
+                className="min-w-[12rem] flex-1"
+                {...register('userId', { required: t('auth.required') })}
+                placeholder={t('admin.verifications.userIdPlaceholder')}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                disabled={!typedUserId.trim() || registrationQuery.isFetching}
+                onClick={() => setLookupUserId(typedUserId.trim())}
+              >
+                {registrationQuery.isFetching
+                  ? t('common.loading')
+                  : t('admin.verifications.loadDocs')}
+              </Button>
+            </div>
             {errors.userId ? (
               <p className="text-sm text-destructive" role="alert">
                 {errors.userId.message}
               </p>
             ) : null}
           </div>
+
+          {registrationQuery.isError ? (
+            <p className="text-sm text-destructive" role="alert">
+              {registrationQuery.error instanceof ApiRequestError
+                ? registrationQuery.error.message
+                : t('admin.verifications.loadDocsFailed')}
+            </p>
+          ) : null}
+
+          {registrationQuery.data && kind === 'agent' ? (
+            <AgentDocsPreview registration={registrationQuery.data as AdminAgentRegistration} />
+          ) : null}
+          {registrationQuery.data && kind === 'driver' ? (
+            <DriverDocsPreview registration={registrationQuery.data as AdminDriverRegistration} />
+          ) : null}
 
           <div className="space-y-2">
             <Label htmlFor={`${title}-status`}>{t('admin.verifications.status')}</Label>
@@ -186,6 +297,7 @@ export function AdminVerificationsPage() {
         <VerificationForm
           title={t('admin.verifications.agentTitle')}
           description={t('admin.verifications.agentDescription')}
+          kind="agent"
           onSubmitAction={async (userId, status) => {
             const result = await adminApi.updateAgentVerification(userId, status)
             return result.user
@@ -194,6 +306,7 @@ export function AdminVerificationsPage() {
         <VerificationForm
           title={t('admin.verifications.driverTitle')}
           description={t('admin.verifications.driverDescription')}
+          kind="driver"
           onSubmitAction={async (userId, status) => {
             const result = await adminApi.updateDriverVerification(userId, status)
             return result.user

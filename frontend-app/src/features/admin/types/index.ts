@@ -11,6 +11,45 @@ export type AdminSafeUser = {
   roles: string[]
 }
 
+export type AdminAgentRegistration = {
+  user: AdminSafeUser
+  profile: {
+    id: string
+    name: string
+    nrc: string
+    nrcFrontPhotoPath: string
+    nrcBackPhotoPath: string
+    email: string
+    phone: string
+    address1: string
+    address2?: string | null
+    cityId: string
+    stateId: string
+    serviceRegionId: string
+    hasRentingExperience: boolean
+  }
+}
+
+export type AdminDriverRegistration = {
+  user: AdminSafeUser
+  profile: {
+    id: string
+    name: string
+    companyName?: string | null
+    nrc: string
+    nrcFrontPhotoPath: string
+    nrcBackPhotoPath: string
+    drivingLicensePhotoPath: string
+    profilePhotoPath: string
+    phone: string
+    currentAddress: string
+    vehicleTypeId: string
+    vehicleLicensePlateNumber: string
+    vehiclePhotoPath: string
+    wheelTaxPhotoPath: string
+  }
+}
+
 export type VerificationCounts = {
   pending: number
   verified: number

@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { MultiImageUploadField } from '@/components/uploads/MultiImageUploadField'
 import { masterDataApi } from '@/features/master-data/api/master-data-api'
 import { ApiRequestError } from '@/lib/api/client'
 
@@ -21,6 +22,7 @@ import {
 import {
   buildInventoryItems,
   collectPhotoPaths,
+  sumInventoryCounts,
   validateMovingRequestForm,
   type MovingRequestFormValues,
 } from '../schemas/moving-request-schema'
@@ -62,6 +64,7 @@ export function HireMovingPage() {
     register,
     handleSubmit,
     setValue,
+    getValues,
     watch,
     setError,
     clearErrors,
@@ -79,11 +82,42 @@ export function HireMovingPage() {
       photo3: '',
       photo4: '',
       photo5: '',
+      totalInventoryItems: '0',
       inventoryCounts: emptyInventoryCounts(),
     },
   })
 
   const inventoryCounts = watch('inventoryCounts')
+  const photo1 = watch('photo1')
+  const photo2 = watch('photo2')
+  const photo3 = watch('photo3')
+  const photo4 = watch('photo4')
+  const photo5 = watch('photo5')
+  const photoPaths = useMemo(
+    () => [photo1, photo2, photo3, photo4, photo5].map((path) => path.trim()).filter(Boolean),
+    [photo1, photo2, photo3, photo4, photo5],
+  )
+
+  const syncPhotoPaths = (paths: string[]) => {
+    setValue('photo1', paths[0] ?? '', { shouldDirty: true, shouldTouch: true })
+    setValue('photo2', paths[1] ?? '', { shouldDirty: true, shouldTouch: true })
+    setValue('photo3', paths[2] ?? '', { shouldDirty: true, shouldTouch: true })
+    setValue('photo4', paths[3] ?? '', { shouldDirty: true, shouldTouch: true })
+    setValue('photo5', paths[4] ?? '', { shouldDirty: true, shouldTouch: true })
+    if (paths.some((path) => path.trim())) {
+      clearErrors('photo1')
+    }
+  }
+
+  const updateInventoryCount = (key: string, next: number) => {
+    const current = { ...getValues('inventoryCounts'), [key]: next }
+    setValue('inventoryCounts', current, { shouldDirty: true })
+    const sum = sumInventoryCounts(current)
+    setValue('totalInventoryItems', String(sum), { shouldDirty: true, shouldTouch: true })
+    if (sum > 0) {
+      clearErrors('totalInventoryItems')
+    }
+  }
 
   const catalogByCategory = useMemo(() => {
     return INVENTORY_CATEGORY_ORDER.map((category) => ({
@@ -94,17 +128,23 @@ export function HireMovingPage() {
 
   const onSubmit = handleSubmit(async (values) => {
     clearErrors()
-    const validationErrors = validateMovingRequestForm(values, t)
+    // Nested inventory counts are controlled via setValue; read latest for submit/validation.
+    const inventoryCountsLatest = getValues('inventoryCounts')
+    const totalInventoryItems = getValues('totalInventoryItems')
+    const merged: MovingRequestFormValues = {
+      ...values,
+      inventoryCounts: inventoryCountsLatest,
+      totalInventoryItems,
+    }
+
+    const validationErrors = validateMovingRequestForm(merged, t)
     const keys = Object.keys(validationErrors) as Array<keyof typeof validationErrors>
     if (keys.length > 0) {
       keys.forEach((key) => {
         const message = validationErrors[key]
         if (!message) return
-        if (key === 'photos' || key === 'inventoryCounts') {
-          setError(key === 'photos' ? 'photo1' : 'inventoryCounts', {
-            type: 'validate',
-            message,
-          })
+        if (key === 'photos') {
+          setError('photo1', { type: 'validate', message })
           return
         }
         setError(key as keyof MovingRequestFormValues, { type: 'validate', message })
@@ -115,16 +155,17 @@ export function HireMovingPage() {
     setFormError(null)
     setCreatedRequestId(null)
 
+    const total = Math.floor(Number(merged.totalInventoryItems))
     try {
       const result = await movingApi.create({
-        pickupAddress: values.pickupAddress.trim(),
-        dropoffAddress: values.dropoffAddress.trim(),
-        moveInDate: new Date(values.moveInDate).toISOString(),
-        vehicleTypeId: values.vehicleTypeId,
-        remarks: values.remarks.trim() || undefined,
-        damageChecklist: values.damageChecklist.trim() || undefined,
-        photos: collectPhotoPaths(values),
-        inventoryItems: buildInventoryItems(values.inventoryCounts),
+        pickupAddress: merged.pickupAddress.trim(),
+        dropoffAddress: merged.dropoffAddress.trim(),
+        moveInDate: new Date(merged.moveInDate).toISOString(),
+        vehicleTypeId: merged.vehicleTypeId,
+        remarks: merged.remarks.trim() || undefined,
+        damageChecklist: merged.damageChecklist.trim() || undefined,
+        photos: collectPhotoPaths(merged),
+        inventoryItems: buildInventoryItems(merged.inventoryCounts, total),
       })
       setCreatedRequestId(result.movingRequest.id)
     } catch (error) {
@@ -181,6 +222,12 @@ export function HireMovingPage() {
       </CardHeader>
       <CardContent>
         <form className="space-y-6" onSubmit={onSubmit} noValidate>
+          <input type="hidden" {...register('photo1')} />
+          <input type="hidden" {...register('photo2')} />
+          <input type="hidden" {...register('photo3')} />
+          <input type="hidden" {...register('photo4')} />
+          <input type="hidden" {...register('photo5')} />
+
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label={t('moving.pickupAddress')} error={errors.pickupAddress?.message} className="sm:col-span-2">
               <Input {...register('pickupAddress')} />
@@ -212,24 +259,38 @@ export function HireMovingPage() {
           <section className="space-y-3">
             <h2 className="text-lg font-medium">{t('moving.photosTitle')}</h2>
             <p className="text-sm text-muted-foreground">{t('moving.photosHint')}</p>
-            {errors.photo1?.message ? <p className="text-sm text-destructive">{errors.photo1.message}</p> : null}
-            <div className="grid gap-3 sm:grid-cols-2">
-              {(['photo1', 'photo2', 'photo3', 'photo4', 'photo5'] as const).map((field, index) => (
-                <Field key={field} label={t('moving.photoN', { n: index + 1 })}>
-                  <Input placeholder={t('agent.pathPlaceholder')} {...register(field)} />
-                </Field>
-              ))}
-            </div>
+            <MultiImageUploadField
+              paths={photoPaths}
+              onChange={syncPhotoPaths}
+              category="moving"
+              maxFiles={5}
+              error={errors.photo1?.message}
+            />
           </section>
 
           <section className="space-y-4">
             <div>
               <h2 className="text-lg font-medium">{t('moving.inventoryTitle')}</h2>
               <p className="text-sm text-muted-foreground">{t('moving.inventoryHint')}</p>
-              {typeof errors.inventoryCounts?.message === 'string' ? (
-                <p className="mt-1 text-sm text-destructive">{errors.inventoryCounts.message}</p>
-              ) : null}
             </div>
+
+            <Field
+              label={t('moving.totalInventoryItems')}
+              error={errors.totalInventoryItems?.message}
+              className="max-w-xs"
+            >
+              <input type="hidden" {...register('totalInventoryItems')} />
+              <Input
+                type="number"
+                min={0}
+                step={1}
+                disabled
+                readOnly
+                value={watch('totalInventoryItems')}
+                tabIndex={-1}
+              />
+            </Field>
+
             {catalogByCategory.map(({ category, items }) => (
               <div key={category} className="space-y-2 rounded-md border p-4">
                 <h3 className="font-medium">{t(`moving.categories.${category}`)}</h3>
@@ -244,7 +305,7 @@ export function HireMovingPage() {
                         value={inventoryCounts[item.key] ?? 0}
                         onChange={(event) => {
                           const next = Math.max(0, Number(event.target.value) || 0)
-                          setValue(`inventoryCounts.${item.key}`, next, { shouldDirty: true })
+                          updateInventoryCount(item.key, next)
                         }}
                       />
                     </label>

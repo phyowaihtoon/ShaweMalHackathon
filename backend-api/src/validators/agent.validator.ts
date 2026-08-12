@@ -1,5 +1,7 @@
 import { body, param } from 'express-validator';
 
+import { uploadedPathArrayItemValidator, uploadedPathValidator } from './upload-path.validator';
+
 const postChannelValues = ['agent', 'roommate'];
 const availabilityValues = ['available', 'not_available'];
 
@@ -13,8 +15,8 @@ const nonNegativeNumericFields = [
 export const agentProfileUpsertValidator = [
   body('name').trim().notEmpty().withMessage('name is required.'),
   body('nrc').trim().isLength({ min: 15, max: 15 }).withMessage('nrc must be exactly 15 characters.'),
-  body('nrcFrontPhotoPath').trim().notEmpty().withMessage('nrcFrontPhotoPath is required.'),
-  body('nrcBackPhotoPath').trim().notEmpty().withMessage('nrcBackPhotoPath is required.'),
+  uploadedPathValidator('nrcFrontPhotoPath', 'docs'),
+  uploadedPathValidator('nrcBackPhotoPath', 'docs'),
   body('email').trim().isEmail().withMessage('email is invalid.'),
   body('phone').trim().notEmpty().withMessage('phone is required.'),
   body('telegram').optional().isString().withMessage('telegram must be a string.'),
@@ -44,8 +46,8 @@ export const agentHouseCreateValidator = [
   body('stateId').trim().notEmpty().withMessage('stateId is required.'),
   body('nearbyPlaces').optional().isString().withMessage('nearbyPlaces must be a string.'),
   body('availability').isIn(availabilityValues).withMessage('availability must be available or not_available.'),
-  body('imagePaths').isArray({ min: 1 }).withMessage('imagePaths must be a non-empty array.'),
-  body('imagePaths.*').isString().withMessage('Each image path must be a string.'),
+  body('imagePaths').isArray({ min: 1, max: 5 }).withMessage('imagePaths must be an array with 1 to 5 entries.'),
+  uploadedPathArrayItemValidator('imagePaths', 'houses'),
   body('amenityIds').optional().isArray().withMessage('amenityIds must be an array.'),
   body('amenityIds.*').optional().isString().withMessage('Each amenity id must be a string.')
 ];

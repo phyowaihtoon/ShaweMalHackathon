@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { SingleImageUploadField } from '@/components/uploads/SingleImageUploadField'
 import { masterDataApi } from '@/features/master-data/api/master-data-api'
 import { ApiRequestError } from '@/lib/api/client'
 
@@ -57,7 +58,9 @@ export function AgentRegisterPage() {
     register,
     handleSubmit,
     watch,
+    setValue,
     setError,
+    clearErrors,
     formState: { errors, isSubmitting },
   } = useForm<AgentRegistrationFormValues>({
     defaultValues: {
@@ -85,7 +88,13 @@ export function AgentRegisterPage() {
     return items.filter((city) => !city.stateId || city.stateId === selectedStateId)
   }, [citiesQuery.data?.items, selectedStateId])
 
+  const setPhotoPath = (field: 'nrcFrontPhotoPath' | 'nrcBackPhotoPath', path: string) => {
+    setValue(field, path, { shouldDirty: true, shouldTouch: true })
+    if (path.trim()) clearErrors(field)
+  }
+
   const onSubmit = handleSubmit(async (values) => {
+    clearErrors()
     const validationErrors = validateAgentRegistrationForm(values, t)
     const keys = Object.keys(validationErrors) as Array<keyof AgentRegistrationFormValues>
     if (keys.length > 0) {
@@ -140,6 +149,9 @@ export function AgentRegisterPage() {
       </CardHeader>
       <CardContent>
         <form className="grid gap-4 sm:grid-cols-2" onSubmit={onSubmit} noValidate>
+          <input type="hidden" {...register('nrcFrontPhotoPath')} />
+          <input type="hidden" {...register('nrcBackPhotoPath')} />
+
           <Field label={t('auth.name')} error={errors.name?.message}>
             <Input {...register('name')} />
           </Field>
@@ -147,10 +159,20 @@ export function AgentRegisterPage() {
             <Input maxLength={15} {...register('nrc')} />
           </Field>
           <Field label={t('agent.nrcFrontPhotoPath')} error={errors.nrcFrontPhotoPath?.message} className="sm:col-span-2">
-            <Input placeholder={t('agent.pathPlaceholder')} {...register('nrcFrontPhotoPath')} />
+            <SingleImageUploadField
+              path={watch('nrcFrontPhotoPath')}
+              onChange={(path) => setPhotoPath('nrcFrontPhotoPath', path)}
+              category="docs"
+              error={errors.nrcFrontPhotoPath?.message}
+            />
           </Field>
           <Field label={t('agent.nrcBackPhotoPath')} error={errors.nrcBackPhotoPath?.message} className="sm:col-span-2">
-            <Input placeholder={t('agent.pathPlaceholder')} {...register('nrcBackPhotoPath')} />
+            <SingleImageUploadField
+              path={watch('nrcBackPhotoPath')}
+              onChange={(path) => setPhotoPath('nrcBackPhotoPath', path)}
+              category="docs"
+              error={errors.nrcBackPhotoPath?.message}
+            />
           </Field>
           <Field label={t('auth.email')} error={errors.email?.message}>
             <Input type="email" {...register('email')} />

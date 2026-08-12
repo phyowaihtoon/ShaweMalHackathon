@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/app/providers/AuthProvider'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { resolvePublicUploadUrl } from '@/lib/uploads/resolve-public-url'
 import { cn } from '@/lib/utils'
 
 import type { HouseListItem } from '../types'
@@ -26,6 +27,7 @@ export function HouseCard({ house, className }: HouseCardProps) {
   const { isAuthenticated } = useAuth()
   const { wishlistedIds, add, remove, isToggling } = useWishlist()
   const isWishlisted = wishlistedIds.has(house.id)
+  const thumbnailSrc = resolvePublicUploadUrl(house.thumbnail)
 
   const onToggleWishlist = async (event: MouseEvent) => {
     event.preventDefault()
@@ -48,9 +50,9 @@ export function HouseCard({ house, className }: HouseCardProps) {
     <Card className={cn('overflow-hidden transition-shadow hover:shadow-md', className)}>
       <Link to={`/houses/${house.id}`} className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
         <div className="relative aspect-[16/10] bg-muted">
-          {house.thumbnail ? (
+          {thumbnailSrc ? (
             <img
-              src={house.thumbnail}
+              src={thumbnailSrc}
               alt={house.title}
               className="h-full w-full object-cover"
               loading="lazy"

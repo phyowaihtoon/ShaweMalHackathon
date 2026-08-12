@@ -5,6 +5,7 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router'
 import { useTranslation } from 'react-i18next'
 
 import { useAuth } from '@/app/providers/AuthProvider'
+import { MultiImageUploadField } from '@/components/uploads/MultiImageUploadField'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -105,6 +106,8 @@ export function AgentHouseFormPage() {
     reset,
     watch,
     setError,
+    setValue,
+    clearErrors,
     formState: { errors, isSubmitting },
   } = useForm<AgentHouseFormValues>({
     defaultValues: defaultAgentHouseFormValues(),
@@ -117,6 +120,27 @@ export function AgentHouseFormPage() {
   }, [existingHouse, reset])
 
   const selectedStateId = watch('stateId')
+  const image1 = watch('image1')
+  const image2 = watch('image2')
+  const image3 = watch('image3')
+  const image4 = watch('image4')
+  const image5 = watch('image5')
+  const imagePaths = useMemo(
+    () => [image1, image2, image3, image4, image5].map((path) => path.trim()).filter(Boolean),
+    [image1, image2, image3, image4, image5],
+  )
+
+  const syncImagePaths = (paths: string[]) => {
+    setValue('image1', paths[0] ?? '', { shouldDirty: true, shouldTouch: true })
+    setValue('image2', paths[1] ?? '', { shouldDirty: true, shouldTouch: true })
+    setValue('image3', paths[2] ?? '', { shouldDirty: true, shouldTouch: true })
+    setValue('image4', paths[3] ?? '', { shouldDirty: true, shouldTouch: true })
+    setValue('image5', paths[4] ?? '', { shouldDirty: true, shouldTouch: true })
+    if (paths.some((path) => path.trim())) {
+      clearErrors('image1')
+    }
+  }
+
   const filteredCities = useMemo(() => {
     const items = citiesQuery.data?.items ?? []
     if (!selectedStateId) return items
@@ -246,6 +270,12 @@ export function AgentHouseFormPage() {
         </CardHeader>
         <CardContent>
           <form className="space-y-6" onSubmit={(event) => void onSubmit(event)} noValidate>
+            <input type="hidden" {...register('image1')} />
+            <input type="hidden" {...register('image2')} />
+            <input type="hidden" {...register('image3')} />
+            <input type="hidden" {...register('image4')} />
+            <input type="hidden" {...register('image5')} />
+
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2 sm:col-span-2">
                 <Label htmlFor="title">{t('agent.houses.fields.title')}</Label>
@@ -480,23 +510,14 @@ export function AgentHouseFormPage() {
                 <h2 className="text-sm font-medium">{t('agent.houses.imagesTitle')}</h2>
                 <p className="text-xs text-muted-foreground">{t('agent.houses.imagesHint')}</p>
               </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {([1, 2, 3, 4, 5] as const).map((n) => {
-                  const field = `image${n}` as const
-                  return (
-                    <div key={field} className="space-y-2">
-                      <Label htmlFor={field}>{t('agent.houses.imageN', { n })}</Label>
-                      <Input
-                        id={field}
-                        placeholder={t('agent.pathPlaceholder')}
-                        {...register(field)}
-                        disabled={!verified}
-                      />
-                    </div>
-                  )
-                })}
-              </div>
-              <FieldError message={errors.image1?.message} />
+              <MultiImageUploadField
+                paths={imagePaths}
+                onChange={syncImagePaths}
+                category="houses"
+                maxFiles={5}
+                disabled={!verified}
+                error={errors.image1?.message}
+              />
             </div>
 
             <div className="space-y-3">

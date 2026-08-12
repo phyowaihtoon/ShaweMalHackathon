@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label'
 import { housesApi } from '@/features/houses/api/houses-api'
 import { masterDataApi } from '@/features/master-data/api/master-data-api'
 import { ApiRequestError } from '@/lib/api/client'
+import { resolvePublicUploadUrl } from '@/lib/uploads/resolve-public-url'
 
 import { roommatesApi } from '../api/roommates-api'
 import {
@@ -313,10 +314,24 @@ export function FindingRoommatesPage() {
           return (
             <Card key={item.id}>
               <CardHeader>
-                <CardTitle className="text-lg">{item.title}</CardTitle>
-                <p className="text-sm text-muted-foreground">
-                  {item.user?.name ?? t('home.anonymousReviewer')} · {item.gender}
-                </p>
+                <div className="flex items-start gap-3">
+                  {(() => {
+                    const avatarSrc = resolvePublicUploadUrl(item.user?.profilePicturePath)
+                    return avatarSrc ? (
+                      <img
+                        src={avatarSrc}
+                        alt=""
+                        className="size-12 shrink-0 rounded-full border border-input object-cover"
+                      />
+                    ) : null
+                  })()}
+                  <div className="min-w-0 space-y-1">
+                    <CardTitle className="text-lg">{item.title}</CardTitle>
+                    <p className="text-sm text-muted-foreground">
+                      {item.user?.name ?? t('home.anonymousReviewer')} · {item.gender}
+                    </p>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent className="space-y-2 text-sm">
                 <p>{item.budgetCostSharing}</p>

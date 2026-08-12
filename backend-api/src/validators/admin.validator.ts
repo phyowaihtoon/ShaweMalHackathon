@@ -29,6 +29,8 @@ export const adminVerificationValidator = [
   body('status').isIn(verificationActions).withMessage('Status must be pending, approve, or reject.')
 ];
 
+export const adminRegistrationLookupValidator = [...userIdParamValidator];
+
 export const adminAssignMovingRequestValidator = [
   param('id').trim().notEmpty().withMessage('Moving request id is required.'),
   body('driverUserId').trim().notEmpty().withMessage('driverUserId is required.')

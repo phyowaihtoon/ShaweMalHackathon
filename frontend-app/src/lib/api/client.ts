@@ -44,7 +44,10 @@ type RequestOptions = Omit<RequestInit, 'body'> & {
 
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const headers = new Headers(options.headers)
-  if (!headers.has('Content-Type') && options.body !== undefined) {
+  const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData
+
+  // Let the browser set multipart boundary for FormData; do not JSON.stringify it.
+  if (!headers.has('Content-Type') && options.body !== undefined && !isFormData) {
     headers.set('Content-Type', 'application/json')
   }
 
@@ -58,7 +61,12 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
     headers,
-    body: options.body === undefined ? undefined : JSON.stringify(options.body),
+    body:
+      options.body === undefined
+        ? undefined
+        : isFormData
+          ? (options.body as FormData)
+          : JSON.stringify(options.body),
   })
 
   const payload = (await response.json().catch(() => null)) as ApiSuccess<T> | ApiFailure | null

@@ -1,0 +1,988 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ShweMal Requirement Specification</title>
+
+  <!-- Markdown parser for inline content rendering -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+  <style>
+    :root {
+      --bg: #f3efe5;
+      --panel: #fffdf8;
+      --text: #1f1d1a;
+      --muted: #5d5549;
+      --accent: #0b6b63;
+      --border: #d8cfbf;
+      --code-bg: #f6f1e7;
+      --shadow: 0 14px 40px rgba(70, 58, 35, 0.12);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 15% 20%, rgba(11, 107, 99, 0.18) 0%, rgba(11, 107, 99, 0) 35%),
+        radial-gradient(circle at 85% 8%, rgba(190, 155, 81, 0.24) 0%, rgba(190, 155, 81, 0) 32%),
+        linear-gradient(180deg, #f7f2e6 0%, #f1ebde 100%);
+      font-family: "Palatino Linotype", "Book Antiqua", Palatino, "Times New Roman", serif;
+      line-height: 1.65;
+    }
+
+    .wrap {
+      max-width: 1000px;
+      margin: 40px auto;
+      padding: 0 20px 40px;
+    }
+
+    .topbar {
+      margin-bottom: 20px;
+      padding: 14px 18px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.72);
+      backdrop-filter: blur(4px);
+      color: var(--muted);
+      font-size: 0.95rem;
+      box-shadow: 0 6px 18px rgba(59, 48, 29, 0.08);
+    }
+
+    .doc {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      padding: 34px 34px 44px;
+    }
+
+    h1, h2, h3 {
+      line-height: 1.25;
+      letter-spacing: 0.2px;
+      margin-top: 1.3em;
+      margin-bottom: 0.55em;
+      color: #162a27;
+    }
+
+    h1 {
+      margin-top: 0.2em;
+      font-size: clamp(1.8rem, 2.5vw, 2.4rem);
+      border-bottom: 2px solid #d9d0c0;
+      padding-bottom: 10px;
+    }
+
+    h2 {
+      font-size: clamp(1.28rem, 2.2vw, 1.58rem);
+      border-left: 4px solid var(--accent);
+      padding-left: 10px;
+    }
+
+    h3 {
+      font-size: clamp(1.08rem, 1.8vw, 1.2rem);
+      color: #223431;
+    }
+
+    p {
+      margin: 0.75em 0;
+    }
+
+    ul, ol {
+      padding-left: 1.35rem;
+      margin: 0.7em 0 1em;
+    }
+
+    li {
+      margin: 0.22em 0;
+    }
+
+    hr {
+      border: 0;
+      border-top: 1px dashed #c7bca7;
+      margin: 1.6em 0;
+    }
+
+    blockquote {
+      border-left: 4px solid #b09f7f;
+      margin: 1em 0;
+      padding: 0.3em 1em;
+      color: #4a4439;
+      background: #faf5ea;
+      border-radius: 0 10px 10px 0;
+    }
+
+    code {
+      background: var(--code-bg);
+      border: 1px solid #e4dbc7;
+      border-radius: 5px;
+      padding: 0.08em 0.3em;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 0.92em;
+    }
+
+    pre {
+      background: #f8f3e8;
+      border: 1px solid #e7dcc8;
+      border-radius: 10px;
+      padding: 14px;
+      overflow: auto;
+    }
+
+    pre code {
+      border: 0;
+      background: transparent;
+      padding: 0;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1em 0;
+      background: #fffdf9;
+    }
+
+    th, td {
+      border: 1px solid #dbcfb8;
+      padding: 10px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: #f2ebdc;
+      color: #2b332f;
+    }
+
+    .footer {
+      margin-top: 18px;
+      color: #756a59;
+      font-size: 0.9rem;
+      text-align: right;
+    }
+
+    @media (max-width: 760px) {
+      .wrap {
+        margin: 22px auto;
+        padding: 0 12px 28px;
+      }
+
+      .doc {
+        padding: 22px 18px 26px;
+        border-radius: 14px;
+      }
+
+      .topbar {
+        font-size: 0.9rem;
+      }
+    }
+
+    @media print {
+      body {
+        background: #fff;
+      }
+
+      .wrap {
+        margin: 0;
+        max-width: none;
+        padding: 0;
+      }
+
+      .topbar,
+      .footer {
+        display: none !important;
+      }
+
+      .doc {
+        border: 0;
+        box-shadow: none;
+        border-radius: 0;
+        padding: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <div class="topbar">
+      <strong>ShweMal Requirement Specification Viewer</strong><br />
+      Self-contained HTML document (no external markdown file loading)
+    </div>
+
+    <article id="content" class="doc" aria-live="polite"></article>
+
+    <div class="footer">
+      Rendered from inline specification content for easier reading.
+    </div>
+  </main>
+
+  <script>
+    (function () {
+      var contentEl = document.getElementById("content");
+      var inlineMarkdown = `# ShweMal Web Application Requirement Specification
+
+## 1. Document Information
+- **Project Name**: ShweMal
+- **Document Type**: Software Requirement Specification (SRS)
+- **Platform**: Web Application
+- **Version**: 1.0
+- **Date**: 2026-08-11
+- **Prepared For**: Product, Design, Development, QA, and Operations Teams
+
+---
+
+## 2. Purpose and Overview
+ShweMal is a web application that provides services for:
+- Renting houses
+- Hiring moving services
+- Finding roommates
+- Connecting users with verified housing agents and verified drivers
+
+The application contains:
+- **Public Portal** (default portal for visitors, normal users, agents, and drivers)
+- **Admin Portal** (only for admin users)
+
+---
+
+## 3. Business Goals
+1. Enable users to quickly discover and book suitable houses.
+2. Provide an end-to-end moving service flow linked with house booking.
+3. Help users find compatible roommates.
+4. Build trust through verification workflows for agents and drivers.
+5. Provide admin controls for user/role management, master data, and reporting.
+
+---
+
+## 4. User Roles
+1. **Visitor**
+- Unauthenticated public user.
+- Can browse and search houses.
+- Must sign up/sign in for booking, posting roommate requests, and profile-specific actions.
+
+2. **Normal User**
+- Registered and authenticated user.
+- Can book houses, hire moving services, maintain wishlist, reviews/ratings, and manage profile.
+
+3. **Agent**
+- Registered user with agent registration.
+- Must be admin-verified to publish housing listings.
+- Can post/edit/delete/view own housing information.
+
+4. **Driver**
+- Registered user with driver registration.
+- Must be admin-verified to accept assigned moving jobs.
+- Can update delivery statuses and process ETAs.
+
+5. **Admin**
+- Uses admin portal only.
+- Verifies agents and drivers.
+- Creates users, assigns roles, manages master data, and views reports.
+
+---
+
+## 5. Portals and Navigation
+
+## 5.1 Public Portal (Default)
+### Header Navigation (Top)
+- Left side:
+  - Logo
+  - App Name (ShweMal)
+- Right side (before login):
+  - Home
+  - About Us
+  - Agent Register
+  - Sign Up
+  - Sign In
+- Right side (after login):
+  - User Profile icon/menu
+  - Notification icon
+
+### Sub Header (Sub Navigation)
+- Finding House
+- Hire Moving Service
+- Finding Roommates
+
+## 5.2 Admin Portal
+- Accessible only by admin role.
+- Contains all administrative modules.
+
+---
+
+## 6. In Scope and Out of Scope
+
+### In Scope
+- House listing discovery, details, and booking flow
+- Agent registration and verification
+- Driver registration and verification
+- Moving service request and driver job workflow
+- Roommate browsing and posting
+- User profile, wishlist, notifications, and history
+- Admin management and reporting
+
+### Out of Scope (Initial Release)
+- Native mobile applications
+- Online payment gateway integration (if needed, handled in later phase)
+- Real-time chat system between users/agents/drivers (future enhancement)
+
+---
+
+## 7. Functional Requirements
+
+## 7.1 Authentication and Account
+### FR-AUTH-001 Login
+- System shall allow login using:
+  - Email
+  - Password
+  - Remember Me option
+
+### FR-AUTH-002 Sign Up
+- System shall allow sign-up using:
+  - Name
+  - Email
+  - Phone Number
+  - Password
+  - Confirm Password
+
+### FR-AUTH-003 Access Control
+- System shall enforce role-based access for normal, agent, driver, and admin users.
+- Admin portal access shall be restricted to admin role only.
+
+### FR-AUTH-004 Registration Notification
+- System shall notify users when account registration is confirmed.
+
+## 7.2 Home Page and Public Browsing
+### FR-HOME-001 Global Search
+- Home page shall display a global search box for house search.
+
+### FR-HOME-002 Featured Listings
+- Home page shall display featured houses.
+
+### FR-HOME-003 Additional Content
+- Home page shall include:
+  - Popular recommended listings
+  - News updates
+  - Verified housing agents
+  - Partner moving services
+  - User reviews of services
+
+### FR-HOME-004 Wishlist from Cards
+- Users shall be able to add favorite house posts to wishlist using a heart icon.
+- If not logged in, system shall request login/sign-up before adding to wishlist.
+
+### FR-HOME-005 Public House Discovery
+- Visitors without sign-up shall be able to find houses.
+
+## 7.3 Find Housing Module
+### FR-HOUSE-001 Search Filters
+- Finding House page shall provide filters for:
+  - City
+  - Type (Property Type)
+  - Minimum Budget
+  - Maximum Budget
+
+### FR-HOUSE-002 Listing Results
+- System shall display house cards with photos and primary information.
+
+### FR-HOUSE-003 Details Page
+- Clicking a house card shall open a details page with:
+  - Full description
+  - Amenities list
+  - Location
+  - Pricing
+  - Agent details
+
+### FR-HOUSE-004 Booking
+- Logged-in users shall be able to book a house.
+- Visitors attempting to book shall be redirected to sign up/sign in first.
+
+### FR-HOUSE-005 Moving Upsell After Booking
+- After successful house booking, system shall ask whether to hire moving service.
+- If user selects Yes, Hire Moving Service page/modal shall open.
+- If user selects No, user shall still be able to hire moving service later from the **Hire Moving Service** link.
+
+## 7.4 Housing Agent Module
+### FR-AGENT-001 Agent Registration
+- System shall provide agent registration form with required fields.
+
+### FR-AGENT-002 Verification Workflow
+- Agent must be verified by admin before posting housing info.
+
+### FR-AGENT-003 Housing CRUD
+- Verified agent shall be able to:
+  - Post housing info
+  - Edit housing info
+  - Delete housing info
+  - View own housing info
+
+## 7.5 Driver Module
+### FR-DRIVER-001 Driver Registration
+- System shall provide driver registration form with required fields.
+
+### FR-DRIVER-002 Verification Workflow
+- Driver must be verified by admin before participating in moving jobs.
+
+### FR-DRIVER-003 Moving Request Response
+- Driver shall receive notifications for new moving requests.
+- Driver shall be able to accept or reject notified moving requests.
+- For each moving request, only the first accepted response shall be confirmed.
+- If a request is already accepted by another driver, it shall no longer be available for acceptance.
+
+### FR-DRIVER-004 Process ETA Entry
+- Driver shall be able to enter estimated time for each moving process stage.
+
+### FR-DRIVER-005 Job Details Visibility
+- Driver shall view for assigned job:
+  - Pick up address
+  - Drop off address
+  - Estimated earnings
+  - Customer name
+  - Customer contact phone
+  - Pre-move cargo photos
+  - Damage checklist
+
+### FR-DRIVER-006 Delivery Status Update
+- Driver shall update delivery status throughout moving lifecycle.
+
+## 7.6 Hire Moving Service Module
+### FR-MOVE-001 Moving Request Form
+- User shall fill moving information form and submit a moving service request.
+- User shall be able to access this form directly from the **Hire Moving Service** link at any later time.
+
+### FR-MOVE-002 Inventory-Based Request
+- Form shall include detailed item counts by room/category and vehicle type selection.
+
+### FR-MOVE-003 Driver Notification Broadcast
+- When a moving request is submitted, system shall notify all users with driver role.
+
+### FR-MOVE-004 First-Accept Assignment Rule
+- When the first driver accepts a moving request, the request status shall change to **Accepted**.
+- After status changes to **Accepted**, other drivers shall not be able to accept that request.
+
+### FR-MOVE-005 Admin Fallback Assignment
+- If no driver accepts a moving request, admin shall be able to assign the request to a specific verified driver.
+
+## 7.7 Roommate Module
+### FR-ROOM-001 Browse Roommates
+- Users shall browse roommate profile cards with preferences and details.
+
+### FR-ROOM-002 Post Roommate Requirement
+- Logged-in users shall be able to post finding roommate details with required fields.
+
+## 7.8 User Profile Module
+### FR-PROFILE-001 Personal Account Management
+- User shall be able to:
+  - Edit personal information
+  - Change password
+  - Update profile picture
+
+### FR-PROFILE-002 Saved and History Data
+- User shall be able to view:
+  - Wishlist houses
+  - Booking history
+  - Moving history
+  - Notifications
+
+### FR-PROFILE-003 Ratings and Reviews
+- User shall be able to submit reviews and ratings for agents and drivers.
+
+### FR-PROFILE-004 Logout
+- User shall be able to logout securely.
+
+## 7.9 Notifications
+### FR-NOTI-001 Notification Types
+- System shall notify users for:
+  - Confirmed account registration
+  - House booking status
+  - New moving request notifications to drivers
+  - Moving booking completion
+  - Driver status updates
+  - System notifications
+
+## 7.10 Admin Portal
+### FR-ADMIN-001 Agent Verification
+- Admin shall verify/reject housing agent registrations.
+
+### FR-ADMIN-002 Driver Verification
+- Admin shall verify/reject driver registrations.
+
+### FR-ADMIN-003 User Account Creation
+- Admin shall create user accounts.
+
+### FR-ADMIN-004 User Roles Management
+- Admin shall assign/manage roles:
+  - normal
+  - agent
+  - driver
+  - admin
+
+### FR-ADMIN-005 Master Data Management
+- Admin shall manage required master data (examples: property type, cities/states, contract types, amenities set, vehicle types, status codes).
+
+### FR-ADMIN-006 Reports
+- Admin shall view reports for operational and business metrics.
+
+---
+
+## 8. Detailed Data Requirements
+
+## 8.1 Login Information
+- Email
+- Password
+- Remember Me
+
+## 8.2 Sign Up Information
+- Name
+- Email
+- Phone Number
+- Password
+- Confirm Password
+
+## 8.3 Housing Information
+- Title (text)
+- post_channel (string, required, enum: Agent, Roommate)
+- Upload House Images (multiple file upload)
+  - House Image 1
+  - House Image 2
+  - House Image 3
+  - House Image 4
+  - House Image 5
+- Property Type (example: Apartment, Condominium)
+- Monthly Fees (amount)
+- Deposit Amount
+- Contract Type (example: 3 months, 6 months)
+- Area Size (text)
+- Floor Level (dropdown: 1st Floor to 20th Floor)
+- Bedrooms (number)
+- Bathrooms (number)
+- House Rules (text)
+- Contact Info:
+  - Telegram
+  - Viber
+  - Phone Number
+- Location:
+  - City
+  - State
+- Nearby Places (text and/or tagged values):
+  - School
+  - University
+  - Bus Stop
+  - Shopping Mall
+  - Market
+  - Hospital & Clinic
+  - Others
+- Availability:
+  - Available
+  - Not Available
+
+### Amenities & Facilities
+- AIR CONDITIONER
+- PARKING
+- FURNISHED
+- WATER HEATER
+- FAN
+- TELEVISION
+- REFRIGERATOR
+- SOFA
+- DESK
+- KITCHEN STOVE
+- WIFI
+- PETS
+- SMOKING
+- LIFT
+- POOL
+- FITNESS
+- SECURITY GUARD
+- KEYCARD
+- FINGERPRINT
+- CCTV
+- LAUNDRY
+- EV CHARGER
+
+## 8.4 Moving Request Information
+- Pick up address
+- Drop off address
+- Move in Date
+- Upload Pre-move cargo photos
+  - Photo 1
+  - Photo 2
+  - Photo 3
+  - Photo 4
+  - Photo 5
+- Damage checklist (e.g text input)
+
+### Bedroom Items (counts)
+- Single bed
+- Couple bed
+- King bed
+- Mattress
+- Wardrobe
+- Dressing table
+- Bedside table
+- Chair
+- Study table
+- Bookshelf
+
+### Living Room Items (counts)
+- Sofa (2 seats)
+- Sofa (1 seat)
+- Coffee table
+- TV
+- TV Stand
+- Shelf
+- Fan
+- Air conditioner
+
+### Kitchen Items (counts)
+- Refrigerator
+- Microwave
+- Rice cooker
+- Washing Machine
+- Water Dispenser
+- Stove
+- Dining table
+- Dining chair
+
+### Office & Study Items (counts)
+- Desktop Computers
+- Laptop
+- Printer
+- Office chair
+- Office Desk
+
+### Other Items (counts)
+- Bicycles
+- Motorcycle
+- Plants
+- Boxes
+
+- Remarks (text input)
+- Vehicle Type for Moving (from master data)
+
+
+## 8.5 Driver Registration Information
+- Name
+- Company Name
+- NRC (text, length 15 characters)
+- NRC Front Photo
+- NRC Back Photo
+- Driving License
+- Profile Picture
+- Phone Number
+- Current Address
+- Vehicle Type (from master data)
+- Vehicle License Plate Number
+- Vehicle Photo
+- Wheel Tax
+
+## 8.6 Agent Registration Information
+- Name
+- NRC (text, length 15 characters)
+- NRC Front Photo
+- NRC Back Photo
+- Email
+- Phone Number
+- Telegram
+- Viber
+- Address 1
+- Address 2
+- City (from master data)
+- State (from master data)
+- Service Region (from master data)
+- Experience in renting houses? (Yes/No)
+
+## 8.7 Post for Finding Roommate
+- Housing Details (select from existing Housing Information entity)
+- Quick summary title
+- Budget & cost sharing (e.g text input)
+- Gender (Male/Female/Any)
+- Occupation (from master data)
+
+### Interests (Yes/No flags)
+- LGBTQ+ friendly
+- Cannabis friendly
+- Smoking friendly
+- No smoking
+- Cat friendly
+- Dog friendly
+- Alcohol friendly
+- Night out
+- Hangout everyday
+
+### Hobbies (Yes/No flags)
+- Playing game
+- Watching movies
+- Singing
+- Playing football
+- Running
+- Cooking
+- Reading
+- Foodie
+- Chill with others
+- Relax silent
+- Playing gym
+
+## 8.8 Admin Master Data Objects
+The following reference data objects are identified as likely admin-managed master data based on the specification. These objects should support CRUD operations from the admin portal and be reusable across houses, moving requests, users, and reports.
+
+### MD-001 Property Type
+- Fields:
+  - id (UUID/string, unique, required)
+  - name (string, required)
+  - description (text, optional)
+  - isActive (boolean, default true)
+
+### MD-002 City
+- Fields:
+  - id (UUID/string, unique, required)
+  - name (string, required)
+  - stateId (reference to State, required)
+  - countryCode (string, required)
+  - postalCodePrefix (string, optional)
+  - isActive (boolean, default true)
+
+### MD-003 State
+- Fields:
+  - id (UUID/string, unique, required)
+  - name (string, required)
+  - countryCode (string, required)
+  - isActive (boolean, default true)
+
+### MD-004 Contract Type
+- Fields:
+  - id (UUID/string, unique, required)
+  - name (string, required)
+  - durationMonths (number, required)
+  - description (text, optional)
+  - isActive (boolean, default true)
+
+### MD-005 Vehicle Type
+- Fields:
+  - id (UUID/string, unique, required)
+  - name (string, required, e.g. 10 ft, 12 ft, 14 ft, 16 ft)
+  - capacityLabel (string, optional)
+  - maxLoadKg (number, optional)
+  - description (text, optional)
+  - isActive (boolean, default true)
+
+### MD-006 Service Region
+- Fields:
+  - id (UUID/string, unique, required)
+  - name (string, required)
+  - code (string, unique, required)
+  - description (text, optional)
+  - isActive (boolean, default true)
+- Purpose: Pre-defined service areas that admin can assign to housing agents for coverage and search filtering.
+
+### MD-007 Floor Level
+- Fields:
+  - id (UUID/string, unique, required)
+  - name (string, required, e.g. 1st Floor, 2nd Floor, Rooftop)
+  - levelNumber (number, optional)
+  - description (text, optional)
+  - isActive (boolean, default true)
+
+### MD-008 Occupation
+- Fields:
+  - id (UUID/string, unique, required)
+  - name (string, required)
+  - description (text, optional)
+  - isActive (boolean, default true)
+
+### MD-009 Amenities & Facilities
+- Fields:
+  - id (UUID/string, unique, required)
+  - name (string, required, e.g. AIR CONDITIONER, PARKING, FURNISHED, WIFI)
+  - category (string, optional, e.g. General, Building, Utility)
+  - description (text, optional)
+  - isActive (boolean, default true)
+
+### MD-010 Role
+- Fields:
+  - id (UUID/string, unique, required)
+  - name (string, required, e.g. normal, agent, driver, admin)
+  - code (string, unique, required)
+  - description (text, optional)
+  - isActive (boolean, default true)
+
+### MD-011 Status Code
+- Fields:
+  - id (UUID/string, unique, required)
+  - entityType (string, required, e.g. House, MovingRequest, Booking, Driver)
+  - code (string, required)
+  - label (string, required)
+  - color (string, optional)
+  - isActive (boolean, default true)
+
+---
+
+## 9. Business Rules
+1. Visitors can search and view houses without registration.
+2. Booking a house requires authenticated user account.
+3. Posting housing listings requires agent role and admin verification status = Verified.
+4. Participating in moving jobs requires driver role and admin verification status = Verified.
+5. Only admin can access admin portal modules.
+6. Role assignment is controlled by admin.
+7. After house booking, user is prompted to hire moving service.
+8. If user declines moving service at booking time, user can still submit a moving request later from the **Hire Moving Service** link.
+9. Roommate post requires authenticated user.
+10. Wishlist requires authenticated user.
+11. On moving request submission, system sends notification to all verified drivers.
+12. The first driver who accepts a moving request is assigned to that request and status changes to **Accepted**.
+13. Once a moving request is **Accepted**, other drivers cannot accept the same request.
+14. If no driver accepts a request, admin can manually assign it to a specific verified driver.
+
+---
+
+## 10. Workflow Requirements
+
+## 10.1 Agent Verification Flow
+1. Agent submits registration.
+2. Admin reviews details/documents.
+3. Admin approves or rejects.
+4. If approved, agent can post housing listings.
+
+## 10.2 Driver Verification Flow
+1. Driver submits registration with vehicle/legal documents.
+2. Admin reviews and verifies.
+3. Verified driver becomes eligible for assigned moving jobs.
+
+## 10.3 House Booking with Moving Prompt
+1. User selects house and books.
+2. Booking confirmation shown.
+3. System asks: Hire moving service?
+4. If Yes, moving form opens and user submits request.
+5. If No, user can still open **Hire Moving Service** later from navigation and submit a request.
+
+## 10.4 Moving Job Lifecycle
+1. User submits moving request.
+2. System notifies all verified drivers.
+3. Drivers review request and accept/reject.
+4. First accepting driver is assigned automatically and request status changes to **Accepted**.
+5. Other drivers can no longer accept that request.
+6. If no driver accepts, admin assigns request to a specific verified driver.
+7. Assigned driver enters stage ETAs.
+8. Assigned driver updates delivery status.
+9. Completion notification is sent to user.
+
+## 10.5 Moving Request Status Definitions
+1. **Pending**
+- Initial status after user submits moving request.
+- Request is open and visible to all verified drivers.
+
+2. **Accepted**
+- Set automatically when the first verified driver accepts the request.
+- Request is locked from acceptance by other drivers.
+
+3. **Assigned**
+- Set when admin manually assigns a request to a specific verified driver because no driver accepted.
+
+4. **In Progress**
+- Set when assigned driver starts the moving operation.
+
+5. **Completed**
+- Set when moving and delivery are finished successfully.
+
+6. **Cancelled**
+- Set when request is cancelled by admin or requester before completion.
+
+---
+
+## 11. Reporting Requirements (Admin)
+Minimum reports should include:
+1. User registrations by role and period
+2. Agent verification status summary
+3. Driver verification status summary
+4. Housing listings counts by city/type/availability
+5. House booking trends and status summary
+6. Moving service request and completion summary
+7. Top-performing agents/drivers by ratings
+
+---
+
+## 12. Non-Functional Requirements
+
+## 12.1 Usability
+- Responsive web design for desktop, tablet, and mobile.
+- Simple navigation with clear primary and secondary menus.
+
+## 12.2 Performance
+- Search and filter actions should return results within acceptable response time under normal load.
+- Listing pages should support pagination or lazy loading.
+
+## 12.3 Security
+- Secure authentication and session handling.
+- Passwords must be stored securely (hashed).
+- Role-based authorization must be enforced server-side.
+- Sensitive document uploads (NRC/license) must be protected with proper access control.
+
+## 12.4 Availability and Reliability
+- System should maintain stable uptime as per deployment target.
+- Error handling should provide user-friendly messages.
+
+## 12.5 Auditability
+- Admin actions (verification, role changes, status updates) should be logged.
+
+## 12.6 Maintainability
+- Modular architecture for housing, moving, roommate, and admin domains.
+
+---
+
+## 13. Validation and Data Quality Rules
+1. Email format validation for all email fields.
+2. Phone number format validation for contact fields.
+3. Password and confirm password must match at sign-up.
+4. Numeric fields (fees, deposit, item counts) must be numeric and non-negative.
+5. NRC should enforce 15-character rule.
+6. Required media upload fields should validate file type and size.
+7. Min budget must be less than or equal to max budget.
+
+---
+
+## 14. Assumptions and Dependencies
+1. Admin team is available to review and verify agent/driver registrations.
+2. Legal and policy requirements for personal document storage are defined by business.
+3. Master data values are configurable via admin portal.
+4. Notification delivery channel for web is in-app notification (email/SMS can be future extension).
+
+---
+
+## 15. Acceptance Criteria Summary
+The first release is accepted when:
+1. Public portal navigation and core pages work as specified.
+2. Visitors can search/view houses without login.
+3. Authenticated users can book houses and submit moving requests.
+4. Verified agents can manage housing listings.
+5. Verified drivers can process assigned moving jobs and update statuses.
+6. Roommate browse/post workflows are functional.
+7. Profile, wishlist, notifications, and histories are functional.
+8. Admin can verify users, manage roles/master data, and view reports.
+9. Required data fields and validation rules are implemented according to this specification.
+
+---
+
+## 16. Items to Confirm (Optional Next Revision)
+1. Final list of admin master data objects and each field definition.
+2. Exact report layouts and export formats (PDF/Excel/CSV).
+3. Whether payment collection is in-scope for first release.
+4. Whether agent-driver direct communication is required.
+5. Final status values for booking and moving lifecycle states.`;
+
+      marked.setOptions({
+        gfm: true,
+        breaks: false,
+        headerIds: true,
+        mangle: false
+      });
+
+      function renderMarkdown(mdText) {
+        contentEl.innerHTML = marked.parse(mdText);
+      }
+
+      renderMarkdown(inlineMarkdown);
+    })();
+  </script>
+</body>
+</html>

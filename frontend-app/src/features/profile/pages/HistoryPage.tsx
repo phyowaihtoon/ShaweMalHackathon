@@ -1,0 +1,144 @@
+import { useQuery } from '@tanstack/react-query'
+import { useEffect } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router'
+import { useTranslation } from 'react-i18next'
+
+import { useAuth } from '@/app/providers/AuthProvider'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+
+import { profileApi } from '../api/profile-api'
+
+export function HistoryPage() {
+  const { t } = useTranslation()
+  const navigate = useNavigate()
+  const location = useLocation()
+  const { isAuthenticated, isBootstrapping } = useAuth()
+
+  useEffect(() => {
+    if (!isBootstrapping && !isAuthenticated) {
+      navigate('/sign-in', { replace: true, state: { from: location.pathname } })
+    }
+  }, [isAuthenticated, isBootstrapping, location.pathname, navigate])
+
+  const historyQuery = useQuery({
+    queryKey: ['profile-history'],
+    enabled: isAuthenticated,
+    queryFn: () => profileApi.history(),
+  })
+
+  if (isBootstrapping || !isAuthenticated) {
+    return <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
+  }
+
+  if (historyQuery.isLoading) {
+    return <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
+  }
+
+  if (historyQuery.isError || !historyQuery.data) {
+    return (
+      <div className="space-y-3">
+        <p className="text-sm text-destructive">{t('profile.historyError')}</p>
+        <Button type="button" variant="outline" onClick={() => void historyQuery.refetch()}>
+          {t('common.retry')}
+        </Button>
+      </div>
+    )
+  }
+
+  const { bookingHistory, movingHistory, notifications } = historyQuery.data
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h1 className="text-2xl font-semibold">{t('nav.history')}</h1>
+          <p className="text-sm text-muted-foreground">{t('profile.historySubtitle')}</p>
+        </div>
+        <Button asChild variant="outline" size="sm">
+          <Link to="/profile">{t('nav.profile')}</Link>
+        </Button>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">{t('profile.bookingHistory')}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {bookingHistory.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{t('profile.emptyBookings')}</p>
+          ) : (
+            bookingHistory.map((booking) => (
+              <div key={booking.id} className="rounded-md border p-3 text-sm">
+                <p className="font-medium">{booking.house?.title ?? booking.id}</p>
+                <p className="text-muted-foreground">
+                  {booking.status} · {new Date(booking.createdAt).toLocaleString()}
+                </p>
+                {booking.house?.id ? (
+                  <Link className="text-primary underline-offset-2 hover:underline" to={`/houses/${booking.house.id}`}>
+                    {t('houses.details')}
+                  </Link>
+                ) : null}
+              </div>
+            ))
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">{t('profile.movingHistory')}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {movingHistory.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{t('profile.emptyMoving')}</p>
+          ) : (
+            movingHistory.map((item) => (
+              <div key={item.id} className="rounded-md border p-3 text-sm">
+                <p className="font-medium">
+                  {item.pickupAddress} → {item.dropoffAddress}
+                </p>
+                <p className="text-muted-foreground">
+                  {item.status} · {item.vehicleType?.name ?? '—'} ·{' '}
+                  {new Date(item.createdAt).toLocaleString()}
+                </p>
+                {item.assignedDriver ? (
+                  <p className="text-muted-foreground">
+                    {t('profile.assignedDriver')}: {item.assignedDriver.name}
+                  </p>
+                ) : null}
+                <Link className="text-primary underline-offset-2 hover:underline" to={`/hire-moving/${item.id}`}>
+                  {t('moving.viewRequest')}
+                </Link>
+              </div>
+            ))
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">{t('nav.notifications')}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            {t('profile.notificationSummary', {
+              total: notifications.total,
+              unread: notifications.unread,
+            })}
+          </p>
+          {notifications.recent.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{t('notifications.empty')}</p>
+          ) : (
+            notifications.recent.map((item) => (
+              <div key={item.id} className="rounded-md border p-3 text-sm">
+                <p className={item.isRead ? 'font-normal' : 'font-semibold'}>{item.title}</p>
+                <p className="text-muted-foreground">{item.message}</p>
+              </div>
+            ))
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  )
+}

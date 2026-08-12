@@ -1,0 +1,54 @@
+export type RoommateGender = 'MALE' | 'FEMALE' | 'ANY'
+
+export type RoommateListFilters = {
+  gender?: RoommateGender | ''
+  occupationId?: string
+  city?: string
+  state?: string
+}
+
+export type RoommatePost = {
+  id: string
+  title: string
+  budgetCostSharing: string
+  gender: RoommateGender | string
+  occupation?: { id: string; name: string } | null
+  preferences?: Record<string, boolean>
+  hobbies?: Record<string, boolean>
+  user?: { id: string; name: string; profilePicturePath?: string | null } | null
+  house?: {
+    id: string
+    title: string
+    city?: { id: string; name: string } | null
+    state?: { id: string; name: string } | null
+  } | null
+  createdAt?: string
+}
+
+export type RoommateCreateInput = {
+  houseId: string
+  title: string
+  budgetCostSharing: string
+  gender: RoommateGender
+  occupationId: string
+  isLgbtqFriendly?: boolean
+  isCannabisFriendly?: boolean
+  isSmokingFriendly?: boolean
+  isNoSmoking?: boolean
+  isCatFriendly?: boolean
+  isDogFriendly?: boolean
+  isAlcoholFriendly?: boolean
+  likesNightOut?: boolean
+  likesHangoutEveryday?: boolean
+  hobbyPlayingGame?: boolean
+  hobbyWatchingMovies?: boolean
+  hobbySinging?: boolean
+  hobbyPlayingFootball?: boolean
+  hobbyRunning?: boolean
+  hobbyCooking?: boolean
+  hobbyReading?: boolean
+  hobbyFoodie?: boolean
+  hobbyChillWithOthers?: boolean
+  hobbyRelaxSilent?: boolean
+  hobbyPlayingGym?: boolean
+}

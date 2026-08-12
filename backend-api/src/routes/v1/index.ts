@@ -1,0 +1,41 @@
+import { Router } from 'express';
+
+import { adminRouter } from './admin.routes';
+import { agentRouter } from './agent.routes';
+import { authRouter } from './auth.routes';
+import { bookingsRouter } from './bookings.routes';
+import { driverRouter } from './driver.routes';
+import { healthRouter } from './health.routes';
+import { homeRouter } from './home.routes';
+import { housesRouter } from './houses.routes';
+import { masterDataRouter } from './master-data.routes';
+import { movingRouter } from './moving.routes';
+import { notificationsRouter } from './notifications.routes';
+import { profileRouter } from './profile.routes';
+import { publicMasterDataRouter } from './public-master-data.routes';
+import { registrationRouter } from './registration.routes';
+import { reviewsRouter } from './reviews.routes';
+import { roommatesRouter } from './roommates.routes';
+import { wishlistRouter } from './wishlist.routes';
+
+const v1Router = Router();
+
+v1Router.use('/health', healthRouter);
+v1Router.use('/home', homeRouter);
+v1Router.use('/auth', authRouter);
+v1Router.use('/profile', profileRouter);
+v1Router.use('/houses', housesRouter);
+v1Router.use('/bookings', bookingsRouter);
+v1Router.use('/roommates', roommatesRouter);
+v1Router.use('/wishlist', wishlistRouter);
+v1Router.use('/reviews', reviewsRouter);
+v1Router.use('/notifications', notificationsRouter);
+v1Router.use('/registrations', registrationRouter);
+v1Router.use('/agent', agentRouter);
+v1Router.use('/driver', driverRouter);
+v1Router.use('/moving', movingRouter);
+v1Router.use('/master-data', publicMasterDataRouter);
+v1Router.use('/admin/master-data', masterDataRouter);
+v1Router.use('/admin', adminRouter);
+
+export { v1Router };

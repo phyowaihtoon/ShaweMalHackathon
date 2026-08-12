@@ -1,0 +1,89 @@
+# ShweMal Backend API
+
+TypeScript + Express + Prisma + MySQL API for the ShweMal platform.
+
+## Scripts
+
+- `npm run dev` — API with tsx watch mode
+- `npm run build` — compile to `dist/`
+- `npm run start` — run compiled server
+- `npm run test` — all tests
+- `npm run test:unit` — unit tests only
+- `npm run test:integration` — integration tests only
+- `npm run lint` — ESLint
+- `npm run prisma:generate` — generate Prisma client
+- `npm run prisma:migrate:dev` — development migrations
+- `npm run prisma:migrate:deploy` — deploy migrations
+- `npm run prisma:seed` — seed roles and status codes
+
+## Architecture
+
+Layered starter layout under `src/`:
+
+- `config` — environment validation
+- `routes` — `/api/v1` composition
+- `controllers` — HTTP orchestration
+- `services` — business logic
+- `middleware` — auth, validation, errors, request id
+- `validators` — express-validator chains
+- `prisma` — Prisma client bootstrap
+- `utils` — JWT, password, API envelope helpers
+
+## Environment
+
+Copy `.env.example` to `.env` and set:
+
+- `DATABASE_URL`
+- `JWT_SECRET`
+- `JWT_EXPIRES_IN`
+- `CORS_ORIGIN`
+- `PORT`
+
+## Database setup
+
+1. `npm run prisma:generate`
+2. `npm run prisma:migrate:dev -- --name init`
+3. `npm run prisma:seed`
+
+## API overview (`/api/v1`)
+
+| Area | Endpoints |
+|------|-----------|
+| Health | `GET /health` |
+| Home | `GET /home` |
+| Auth | `POST /auth/register`, `POST /auth/login`, `POST /auth/refresh`, `POST /auth/logout`, `GET /auth/me`, `GET /auth/verify` |
+| Profile | `GET/PATCH /profile`, `GET /profile/history`, `PATCH /profile/change-password` |
+| Houses | `GET /houses`, `GET /houses/:id`, `POST /houses/:id/bookings` |
+| Bookings | `GET /bookings`, `PATCH /bookings/:id/status` |
+| Registrations | `POST /registrations/agent`, `POST /registrations/driver` |
+| Agent | `POST /agent/profile`, CRUD `/agent/houses` |
+| Driver | profile + moving request accept/reject/eta/status |
+| Moving | `POST /moving/requests`, `GET /moving/requests/:id` |
+| Roommates | `GET/POST /roommates` |
+| Wishlist | `GET/POST/DELETE /wishlist/:houseId` |
+| Reviews | `GET/POST /reviews` |
+| Notifications | `GET /notifications`, `PATCH /notifications/:id/read` |
+| Public master data | `GET /master-data/:entity` |
+| Admin | users, verification, moving assignment, reports |
+| Admin master data | CRUD `/admin/master-data/:entity` including `roles` |
+
+## Requirement mapping (backend)
+
+Implemented requirement groups:
+
+- FR-AUTH-001..004 — auth, RBAC, registration notification
+- FR-HOME-002..003, FR-HOME-005 — home feed + public house discovery
+- FR-HOUSE-001..005 — search, details, booking, moving upsell flag
+- FR-AGENT-001..003 — self-service registration + verified agent CRUD
+- FR-DRIVER-001..006 — self-service registration + moving workflow + estimated earnings
+- FR-MOVE-001..005 — moving request lifecycle
+- FR-ROOM-001..002 — roommate browse/post
+- FR-PROFILE-001..004 — profile, history, reviews, logout via refresh revoke
+- FR-NOTI-001 — in-app notifications for core events
+- FR-ADMIN-001..006 — verification, users, roles, master data, period-filtered reports
+- MD-001..011 — master data CRUD including roles
+
+## Notes
+
+- File uploads store document/image paths; clients upload binaries separately and send paths in API payloads.
+- Integration tests mock Prisma; run migrations against MySQL for full database verification.

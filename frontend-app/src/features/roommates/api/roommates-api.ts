@@ -1,0 +1,25 @@
+import { apiRequest } from '@/lib/api/client'
+
+import type { RoommateCreateInput, RoommateListFilters, RoommatePost } from '../types'
+
+function toQuery(filters: RoommateListFilters): string {
+  const search = new URLSearchParams()
+  if (filters.gender) search.set('gender', filters.gender)
+  if (filters.occupationId?.trim()) search.set('occupationId', filters.occupationId.trim())
+  if (filters.city?.trim()) search.set('city', filters.city.trim())
+  if (filters.state?.trim()) search.set('state', filters.state.trim())
+  const query = search.toString()
+  return query ? `?${query}` : ''
+}
+
+export const roommatesApi = {
+  list(filters: RoommateListFilters = {}) {
+    return apiRequest<{ items: RoommatePost[] }>(`/roommates${toQuery(filters)}`, { auth: false })
+  },
+  create(input: RoommateCreateInput) {
+    return apiRequest<{ item: RoommatePost }>('/roommates', {
+      method: 'POST',
+      body: input,
+    })
+  },
+}

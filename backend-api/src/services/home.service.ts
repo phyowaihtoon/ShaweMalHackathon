@@ -1,0 +1,175 @@
+import { HouseAvailabilityStatus } from '@prisma/client';
+
+import { prisma } from '../prisma/client';
+import { listHouses } from './house.service';
+
+export const getHomePageContent = async () => {
+  const [featuredHouses, verifiedAgents, serviceReviews] = await Promise.all([
+    listHouses({
+      page: 1,
+      pageSize: 6
+    }),
+    prisma.user.findMany({
+      where: {
+        isActive: true,
+        verificationStatus: 'VERIFIED',
+        userRoles: {
+          some: {
+            role: {
+              name: 'agent'
+            }
+          }
+        },
+        agentProfile: {
+          isNot: null
+        }
+      },
+      select: {
+        id: true,
+        name: true,
+        phone: true,
+        verificationStatus: true,
+        agentProfile: {
+          select: {
+            city: {
+              select: {
+                id: true,
+                name: true
+              }
+            },
+            serviceRegion: {
+              select: {
+                id: true,
+                name: true
+              }
+            }
+          }
+        }
+      },
+      take: 8,
+      orderBy: {
+        createdAt: 'desc'
+      }
+    }),
+    prisma.ratingReview.findMany({
+      orderBy: {
+        createdAt: 'desc'
+      },
+      take: 6,
+      select: {
+        id: true,
+        rating: true,
+        comment: true,
+        targetType: true,
+        createdAt: true,
+        reviewer: {
+          select: {
+            id: true,
+            name: true
+          }
+        },
+        targetUser: {
+          select: {
+            id: true,
+            name: true
+          }
+        }
+      }
+    })
+  ]);
+
+  const popularHouses = await prisma.house.findMany({
+    where: {
+      availability: HouseAvailabilityStatus.AVAILABLE
+    },
+    include: {
+      images: {
+        select: {
+          imagePath: true,
+          sortOrder: true
+        },
+        orderBy: {
+          sortOrder: 'asc'
+        },
+        take: 1
+      },
+      propertyType: {
+        select: {
+          id: true,
+          name: true
+        }
+      },
+      city: {
+        select: {
+          id: true,
+          name: true
+        }
+      }
+    },
+    orderBy: {
+      bookings: {
+        _count: 'desc'
+      }
+    },
+    take: 6
+  });
+
+  const verifiedDrivers = await prisma.user.findMany({
+    where: {
+      isActive: true,
+      verificationStatus: 'VERIFIED',
+      userRoles: {
+        some: {
+          role: {
+            name: 'driver'
+          }
+        }
+      },
+      driverProfile: {
+        isNot: null
+      }
+    },
+    select: {
+      id: true,
+      name: true,
+      driverProfile: {
+        select: {
+          companyName: true,
+          vehicleType: {
+            select: {
+              id: true,
+              name: true
+            }
+          }
+        }
+      }
+    },
+    take: 6,
+    orderBy: {
+      createdAt: 'desc'
+    }
+  });
+
+  return {
+    featuredHouses: featuredHouses.items,
+    popularRecommended: popularHouses.map((house) => ({
+      id: house.id,
+      title: house.title,
+      monthlyFees: Number(house.monthlyFees),
+      propertyType: house.propertyType,
+      city: house.city,
+      thumbnail: house.images[0]?.imagePath ?? null
+    })),
+    verifiedAgents,
+    partnerMovingServices: verifiedDrivers,
+    serviceReviews,
+    newsUpdates: [
+      {
+        id: 'news-welcome',
+        title: 'Welcome to ShweMal',
+        summary: 'Discover houses, moving services, and roommates in one place.',
+        publishedAt: new Date().toISOString()
+      }
+    ]
+  };
+};

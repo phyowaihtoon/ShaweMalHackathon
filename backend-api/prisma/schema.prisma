@@ -1,0 +1,573 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum HousePostChannel {
+  AGENT
+  ROOMMATE
+}
+
+enum HouseAvailabilityStatus {
+  AVAILABLE
+  NOT_AVAILABLE
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+}
+
+enum MovingRequestStatus {
+  PENDING
+  ACCEPTED
+  ASSIGNED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum MovingStatusEventType {
+  CREATED
+  ACCEPTED
+  REJECTED
+  ASSIGNED
+  ETA_UPDATED
+  STATUS_UPDATED
+}
+
+enum RoommateGender {
+  MALE
+  FEMALE
+  ANY
+}
+
+enum ReviewTargetType {
+  AGENT
+  DRIVER
+}
+
+model User {
+  id                 String             @id @default(cuid())
+  name               String
+  email              String             @unique
+  phone              String             @unique
+  profilePicturePath String?
+  passwordHash       String
+  verificationStatus VerificationStatus @default(PENDING)
+  isActive           Boolean            @default(true)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  userRoles          UserRole[]
+  notifications      Notification[]
+  refreshSessions    RefreshSession[]
+  auditLogsAsActor   AuditLog[]         @relation("AuditActor")
+  agentProfile       AgentProfile?
+  driverProfile      DriverProfile?
+  houses             House[]            @relation("HouseOwner")
+  bookings           Booking[]
+  wishlists          Wishlist[]
+  movingRequests     MovingRequest[]    @relation("MovingRequester")
+  assignedMovingRequests MovingRequest[] @relation("MovingAssignedDriver")
+  movingStatusEventsAsActor MovingStatusEvent[] @relation("MovingStatusEventActor")
+  movingEtaEntries   MovingEtaEntry[]
+  roommatePosts      RoommatePost[]
+  ratingReviewsGiven RatingReview[]     @relation("RatingReviewReviewer")
+  ratingReviewsReceived RatingReview[]  @relation("RatingReviewTarget")
+
+  @@index([verificationStatus])
+}
+
+model Role {
+  id          String     @id @default(cuid())
+  name        String     @unique
+  code        String     @unique
+  description String?
+  isActive    Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  userRoles   UserRole[]
+
+  @@index([isActive])
+}
+
+model RefreshSession {
+  id           String    @id @default(cuid())
+  userId       String
+  tokenHash    String    @unique
+  rememberMe   Boolean   @default(false)
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  replacedById String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+  @@index([revokedAt])
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  actorUserId String?
+  action      String
+  targetType  String
+  targetId    String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  actor       User?    @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([action])
+  @@index([targetType, targetId])
+  @@index([actorUserId])
+}
+
+model UserRole {
+  id         String   @id @default(cuid())
+  userId     String
+  roleId     String
+  assignedAt DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role       Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId])
+  @@index([roleId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  message   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+}
+
+model PropertyType {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  houses      House[]
+}
+
+model State {
+  id          String   @id @default(cuid())
+  name        String
+  countryCode String
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  cities      City[]
+  houses      House[]
+  agentProfiles AgentProfile[]
+
+  @@unique([name, countryCode])
+  @@index([isActive])
+}
+
+model City {
+  id               String   @id @default(cuid())
+  name             String
+  stateId          String
+  countryCode      String
+  postalCodePrefix String?
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  state            State    @relation(fields: [stateId], references: [id], onDelete: Restrict)
+  houses           House[]
+  agentProfiles    AgentProfile[]
+
+  @@unique([name, stateId])
+  @@index([isActive])
+  @@index([stateId])
+}
+
+model ContractType {
+  id             String   @id @default(cuid())
+  name           String   @unique
+  durationMonths Int
+  description    String?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  houses         House[]
+}
+
+model VehicleType {
+  id            String   @id @default(cuid())
+  name          String   @unique
+  capacityLabel String?
+  maxLoadKg     Int?
+  description   String?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  driverProfiles DriverProfile[]
+  movingRequests MovingRequest[]
+}
+
+model DriverProfile {
+  id                        String   @id @default(cuid())
+  userId                    String   @unique
+  name                      String
+  companyName               String?
+  nrc                       String
+  nrcFrontPhotoPath         String
+  nrcBackPhotoPath          String
+  drivingLicensePhotoPath   String
+  profilePhotoPath          String
+  phone                     String
+  currentAddress            String
+  vehicleTypeId             String
+  vehicleLicensePlateNumber String
+  vehiclePhotoPath          String
+  wheelTaxPhotoPath         String
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+  user                      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vehicleType               VehicleType @relation(fields: [vehicleTypeId], references: [id], onDelete: Restrict)
+
+  @@index([vehicleTypeId])
+}
+
+model MovingRequest {
+  id                   String             @id @default(cuid())
+  requesterUserId      String
+  assignedDriverUserId String?
+  vehicleTypeId        String
+  status               MovingRequestStatus @default(PENDING)
+  pickupAddress        String
+  dropoffAddress       String
+  moveInDate           DateTime
+  remarks              String?
+  damageChecklist      String?
+  estimatedEarnings    Decimal?           @db.Decimal(12, 2)
+  acceptedAt           DateTime?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  requester            User               @relation("MovingRequester", fields: [requesterUserId], references: [id], onDelete: Cascade)
+  assignedDriver       User?              @relation("MovingAssignedDriver", fields: [assignedDriverUserId], references: [id], onDelete: SetNull)
+  vehicleType          VehicleType        @relation(fields: [vehicleTypeId], references: [id], onDelete: Restrict)
+  photos               MovingRequestPhoto[]
+  inventoryItems       MovingInventoryItem[]
+  statusEvents         MovingStatusEvent[]
+  etaEntries           MovingEtaEntry[]
+
+  @@index([requesterUserId, createdAt])
+  @@index([assignedDriverUserId, createdAt])
+  @@index([status, assignedDriverUserId, createdAt])
+}
+
+model MovingRequestPhoto {
+  id              String   @id @default(cuid())
+  movingRequestId String
+  photoPath       String
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
+  movingRequest   MovingRequest @relation(fields: [movingRequestId], references: [id], onDelete: Cascade)
+
+  @@index([movingRequestId])
+}
+
+model MovingInventoryItem {
+  id              String   @id @default(cuid())
+  movingRequestId String
+  category        String
+  itemName        String
+  count           Int
+  createdAt       DateTime @default(now())
+  movingRequest   MovingRequest @relation(fields: [movingRequestId], references: [id], onDelete: Cascade)
+
+  @@index([movingRequestId])
+  @@index([category])
+}
+
+model MovingStatusEvent {
+  id              String                @id @default(cuid())
+  movingRequestId String
+  actorUserId     String?
+  eventType       MovingStatusEventType
+  status          MovingRequestStatus?
+  notes           String?
+  createdAt       DateTime              @default(now())
+  movingRequest   MovingRequest         @relation(fields: [movingRequestId], references: [id], onDelete: Cascade)
+  actor           User?                 @relation("MovingStatusEventActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([movingRequestId, createdAt])
+  @@index([actorUserId])
+  @@index([eventType])
+}
+
+model MovingEtaEntry {
+  id              String   @id @default(cuid())
+  movingRequestId String
+  driverUserId    String
+  stage           String
+  etaAt           DateTime
+  notes           String?
+  createdAt       DateTime @default(now())
+  movingRequest   MovingRequest @relation(fields: [movingRequestId], references: [id], onDelete: Cascade)
+  driver          User     @relation(fields: [driverUserId], references: [id], onDelete: Cascade)
+
+  @@index([movingRequestId, createdAt])
+  @@index([driverUserId])
+}
+
+model ServiceRegion {
+  id          String   @id @default(cuid())
+  name        String
+  code        String   @unique
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  agentProfiles AgentProfile[]
+
+  @@unique([name, code])
+}
+
+model FloorLevel {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  levelNumber Int?
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  houses      House[]
+}
+
+model Occupation {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  roommatePosts RoommatePost[]
+}
+
+model Amenity {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  category    String?
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  houseAmenities HouseAmenity[]
+}
+
+model AgentProfile {
+  id                  String   @id @default(cuid())
+  userId              String   @unique
+  name                String
+  nrc                 String
+  nrcFrontPhotoPath   String
+  nrcBackPhotoPath    String
+  email               String
+  phone               String
+  telegram            String?
+  viber               String?
+  address1            String
+  address2            String?
+  cityId              String
+  stateId             String
+  serviceRegionId     String
+  hasRentingExperience Boolean
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  city                City     @relation(fields: [cityId], references: [id], onDelete: Restrict)
+  state               State    @relation(fields: [stateId], references: [id], onDelete: Restrict)
+  serviceRegion       ServiceRegion @relation(fields: [serviceRegionId], references: [id], onDelete: Restrict)
+
+  @@index([cityId])
+  @@index([stateId])
+  @@index([serviceRegionId])
+}
+
+model House {
+  id                 String                  @id @default(cuid())
+  agentId            String
+  title              String
+  description        String?
+  postChannel        HousePostChannel
+  propertyTypeId     String
+  monthlyFees        Decimal                 @db.Decimal(12, 2)
+  depositAmount      Decimal                 @db.Decimal(12, 2)
+  contractTypeId     String
+  areaSize           String?
+  floorLevelId       String?
+  bedrooms           Int                     @default(0)
+  bathrooms          Int                     @default(0)
+  houseRules         String?
+  contactTelegram    String?
+  contactViber       String?
+  contactPhoneNumber String
+  cityId             String
+  stateId            String
+  nearbyPlaces       String?
+  availability       HouseAvailabilityStatus @default(AVAILABLE)
+  createdAt          DateTime                @default(now())
+  updatedAt          DateTime                @updatedAt
+  agent              User                    @relation("HouseOwner", fields: [agentId], references: [id], onDelete: Restrict)
+  propertyType       PropertyType            @relation(fields: [propertyTypeId], references: [id], onDelete: Restrict)
+  contractType       ContractType            @relation(fields: [contractTypeId], references: [id], onDelete: Restrict)
+  floorLevel         FloorLevel?             @relation(fields: [floorLevelId], references: [id], onDelete: SetNull)
+  city               City                    @relation(fields: [cityId], references: [id], onDelete: Restrict)
+  state              State                   @relation(fields: [stateId], references: [id], onDelete: Restrict)
+  images             HouseImage[]
+  amenities          HouseAmenity[]
+  bookings           Booking[]
+  wishlists          Wishlist[]
+  roommatePosts      RoommatePost[]
+
+  @@index([agentId])
+  @@index([propertyTypeId])
+  @@index([contractTypeId])
+  @@index([floorLevelId])
+  @@index([cityId])
+  @@index([stateId])
+  @@index([availability])
+  @@index([postChannel])
+}
+
+model RoommatePost {
+  id                   String        @id @default(cuid())
+  userId               String
+  houseId              String
+  title                String
+  budgetCostSharing    String
+  gender               RoommateGender
+  occupationId         String
+  isLgbtqFriendly      Boolean       @default(false)
+  isCannabisFriendly   Boolean       @default(false)
+  isSmokingFriendly    Boolean       @default(false)
+  isNoSmoking          Boolean       @default(false)
+  isCatFriendly        Boolean       @default(false)
+  isDogFriendly        Boolean       @default(false)
+  isAlcoholFriendly    Boolean       @default(false)
+  likesNightOut        Boolean       @default(false)
+  likesHangoutEveryday Boolean       @default(false)
+  hobbyPlayingGame     Boolean       @default(false)
+  hobbyWatchingMovies  Boolean       @default(false)
+  hobbySinging         Boolean       @default(false)
+  hobbyPlayingFootball Boolean       @default(false)
+  hobbyRunning         Boolean       @default(false)
+  hobbyCooking         Boolean       @default(false)
+  hobbyReading         Boolean       @default(false)
+  hobbyFoodie          Boolean       @default(false)
+  hobbyChillWithOthers Boolean       @default(false)
+  hobbyRelaxSilent     Boolean       @default(false)
+  hobbyPlayingGym      Boolean       @default(false)
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+  user                 User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  house                House         @relation(fields: [houseId], references: [id], onDelete: Cascade)
+  occupation           Occupation    @relation(fields: [occupationId], references: [id], onDelete: Restrict)
+
+  @@index([userId, createdAt])
+  @@index([houseId])
+  @@index([occupationId])
+  @@index([gender])
+}
+
+model HouseImage {
+  id        String   @id @default(cuid())
+  houseId   String
+  imagePath String
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  house     House    @relation(fields: [houseId], references: [id], onDelete: Cascade)
+
+  @@index([houseId])
+}
+
+model HouseAmenity {
+  id        String   @id @default(cuid())
+  houseId   String
+  amenityId String
+  createdAt DateTime @default(now())
+  house     House    @relation(fields: [houseId], references: [id], onDelete: Cascade)
+  amenity   Amenity  @relation(fields: [amenityId], references: [id], onDelete: Restrict)
+
+  @@unique([houseId, amenityId])
+  @@index([amenityId])
+}
+
+model Booking {
+  id        String       @id @default(cuid())
+  userId    String
+  houseId   String
+  status    BookingStatus @default(PENDING)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  house     House        @relation(fields: [houseId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([houseId])
+  @@index([status])
+}
+
+model Wishlist {
+  id        String   @id @default(cuid())
+  userId    String
+  houseId   String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  house     House    @relation(fields: [houseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, houseId])
+  @@index([userId])
+  @@index([houseId])
+}
+
+model RatingReview {
+  id             String           @id @default(cuid())
+  reviewerUserId String
+  targetType     ReviewTargetType
+  targetUserId   String
+  rating         Int
+  comment        String?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  reviewer       User             @relation("RatingReviewReviewer", fields: [reviewerUserId], references: [id], onDelete: Cascade)
+  targetUser     User             @relation("RatingReviewTarget", fields: [targetUserId], references: [id], onDelete: Cascade)
+
+  @@index([reviewerUserId, createdAt])
+  @@index([targetType, targetUserId, createdAt])
+  @@index([rating])
+}
+
+model StatusCode {
+  id         String   @id @default(cuid())
+  entityType String
+  code       String
+  label      String
+  color      String?
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([entityType, code])
+  @@index([isActive])
+}

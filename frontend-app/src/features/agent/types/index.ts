@@ -23,6 +23,9 @@ export type AgentHouse = {
   contactTelegram?: string | null
   contactViber?: string | null
   contactPhoneNumber: string
+  streetAddress?: string | null
+  latitude?: number | null
+  longitude?: number | null
   nearbyPlaces?: string | null
   availability: string
   propertyType?: NamedRef | null
@@ -54,6 +57,9 @@ export type AgentHouseInput = {
   contactPhoneNumber: string
   cityId: string
   stateId: string
+  streetAddress?: string
+  latitude?: number | null
+  longitude?: number | null
   nearbyPlaces?: string
   availability: 'available' | 'not_available'
   imagePaths: string[]

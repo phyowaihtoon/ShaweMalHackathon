@@ -38,6 +38,9 @@ interface AgentHouseInput {
   contactPhoneNumber: string;
   cityId: string;
   stateId: string;
+  streetAddress?: string;
+  latitude?: number | null;
+  longitude?: number | null;
   nearbyPlaces?: string;
   availability: HouseAvailabilityStatus;
   imagePaths: string[];
@@ -97,6 +100,23 @@ const HOUSE_OWNER_INCLUDE = {
   }
 } as const;
 
+const toOptionalDecimal = (value?: number | null): Prisma.Decimal | null => {
+  if (value === undefined || value === null || Number.isNaN(value)) {
+    return null;
+  }
+
+  return new Prisma.Decimal(value);
+};
+
+const toOptionalNumber = (value: Prisma.Decimal | number | null | undefined): number | null => {
+  if (value == null) {
+    return null;
+  }
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
 const assertVerifiedAgent = async (userId: string) => {
   const user = await prisma.user.findUnique({
     where: { id: userId },
@@ -139,6 +159,9 @@ const normalizeHouse = (
   contactTelegram: house.contactTelegram,
   contactViber: house.contactViber,
   contactPhoneNumber: house.contactPhoneNumber,
+  streetAddress: house.streetAddress,
+  latitude: toOptionalNumber(house.latitude),
+  longitude: toOptionalNumber(house.longitude),
   nearbyPlaces: house.nearbyPlaces,
   availability: house.availability,
   propertyType: house.propertyType,
@@ -190,6 +213,9 @@ export const createAgentHouse = async (userId: string, input: AgentHouseInput) =
       contactPhoneNumber: input.contactPhoneNumber,
       cityId: input.cityId,
       stateId: input.stateId,
+      streetAddress: input.streetAddress,
+      latitude: toOptionalDecimal(input.latitude),
+      longitude: toOptionalDecimal(input.longitude),
       nearbyPlaces: input.nearbyPlaces,
       availability: input.availability,
       images: {
@@ -271,6 +297,9 @@ export const updateAgentHouse = async (userId: string, houseId: string, input: A
         contactPhoneNumber: input.contactPhoneNumber,
         cityId: input.cityId,
         stateId: input.stateId,
+        streetAddress: input.streetAddress,
+        latitude: toOptionalDecimal(input.latitude),
+        longitude: toOptionalDecimal(input.longitude),
         nearbyPlaces: input.nearbyPlaces,
         availability: input.availability,
         images: {

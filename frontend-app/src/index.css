@@ -3,6 +3,7 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
+  color-scheme: light;
   --radius: 0.5rem;
   --background: oklch(0.99 0.005 95);
   --foreground: oklch(0.22 0.02 55);
@@ -25,6 +26,7 @@
 }
 
 .dark {
+  color-scheme: dark;
   --background: oklch(0.18 0.015 55);
   --foreground: oklch(0.96 0.01 95);
   --card: oklch(0.22 0.015 55);
@@ -84,4 +86,18 @@
   #root {
     min-height: 100vh;
   }
+}
+
+/* Native <select> option lists inherit text color but keep a light OS panel
+   unless color-scheme and option colors are set explicitly. Unlayered so this
+   wins over utility classes such as bg-transparent. */
+select {
+  background-color: var(--card);
+  color: var(--foreground);
+}
+
+select option,
+select optgroup {
+  background-color: var(--popover);
+  color: var(--popover-foreground);
 }

@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { useTranslation } from 'react-i18next'
@@ -9,8 +9,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ApiRequestError } from '@/lib/api/client'
 import { resolvePublicUploadUrl } from '@/lib/uploads/resolve-public-url'
 
+import { bookingsApi } from '../api/bookings-api'
 import { housesApi } from '../api/houses-api'
-import { MovingUpsellDialog } from '../components/MovingUpsellDialog'
+import { CancelBookingDialog } from '../components/CancelBookingDialog'
+import { HouseLocationMap } from '../components/HouseLocationMap'
 import { useWishlist } from '../hooks/useWishlist'
 
 function formatFees(value: number) {
@@ -22,10 +24,11 @@ export function HouseDetailsPage() {
   const { id = '' } = useParams()
   const navigate = useNavigate()
   const { isAuthenticated } = useAuth()
+  const queryClient = useQueryClient()
   const { wishlistedIds, add, remove, isToggling } = useWishlist()
-  const [upsellOpen, setUpsellOpen] = useState(false)
-  const [bookingId, setBookingId] = useState<string | undefined>()
   const [bookError, setBookError] = useState<string | null>(null)
+  const [cancelError, setCancelError] = useState<string | null>(null)
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
 
   const detailsQuery = useQuery({
     queryKey: ['houses', id],
@@ -33,14 +36,18 @@ export function HouseDetailsPage() {
     queryFn: () => housesApi.getById(id),
   })
 
+  const myBookingsQuery = useQuery({
+    queryKey: ['my-bookings'],
+    enabled: isAuthenticated,
+    queryFn: () => bookingsApi.listMine(),
+  })
+
   const bookMutation = useMutation({
     mutationFn: () => housesApi.book(id),
-    onSuccess: (result) => {
+    onSuccess: async (result) => {
       setBookError(null)
-      setBookingId(result.booking.id)
-      if (result.promptMovingService) {
-        setUpsellOpen(true)
-      }
+      await queryClient.invalidateQueries({ queryKey: ['my-bookings'] })
+      navigate(`/houses/${id}/bookings/${result.booking.id}/confirmation`)
     },
     onError: (error) => {
       if (error instanceof ApiRequestError) {
@@ -53,6 +60,21 @@ export function HouseDetailsPage() {
 
   const house = detailsQuery.data?.item
   const isWishlisted = Boolean(house && wishlistedIds.has(house.id))
+  const myActiveBooking = myBookingsQuery.data?.items.find(
+    (item) => item.houseId === id && item.status.toUpperCase() !== 'CANCELLED',
+  )
+
+  const cancelMutation = useMutation({
+    mutationFn: (bookingId: string) => bookingsApi.updateStatus(bookingId, 'CANCELLED'),
+    onSuccess: async () => {
+      setCancelError(null)
+      setCancelDialogOpen(false)
+      await queryClient.invalidateQueries({ queryKey: ['my-bookings'] })
+    },
+    onError: (error) => {
+      setCancelError(error instanceof ApiRequestError ? error.message : t('houses.cancelFailed'))
+    },
+  })
 
   const onBook = () => {
     if (!isAuthenticated) {
@@ -107,22 +129,50 @@ export function HouseDetailsPage() {
           </p>
           <h1 className="mt-2 text-3xl font-semibold tracking-tight">{house.title}</h1>
           <p className="mt-1 text-muted-foreground">
-            {[house.location.city?.name, house.location.state?.name, house.propertyType?.name]
+            {[
+              house.location.streetAddress,
+              house.location.city?.name,
+              house.location.state?.name,
+              house.propertyType?.name,
+            ]
               .filter(Boolean)
               .join(' · ')}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button type="button" variant="outline" disabled={isToggling} onClick={() => void onToggleWishlist()}>
             {isWishlisted ? t('houses.removeWishlist') : t('houses.addWishlist')}
           </Button>
-          <Button type="button" disabled={bookMutation.isPending} onClick={onBook}>
-            {bookMutation.isPending ? t('common.loading') : t('houses.bookNow')}
-          </Button>
+          {myActiveBooking ? (
+            <Button type="button" variant="outline" onClick={() => setCancelDialogOpen(true)}>
+              {t('houses.cancelBooking')}
+            </Button>
+          ) : (
+            <Button type="button" disabled={bookMutation.isPending} onClick={onBook}>
+              {bookMutation.isPending ? t('common.loading') : t('houses.bookNow')}
+            </Button>
+          )}
         </div>
       </div>
 
       {bookError ? <p className="text-sm text-destructive">{bookError}</p> : null}
+      {cancelError ? <p className="text-sm text-destructive">{cancelError}</p> : null}
+
+      <CancelBookingDialog
+        open={cancelDialogOpen && Boolean(myActiveBooking)}
+        houseTitle={house.title}
+        isPending={cancelMutation.isPending}
+        onDismiss={() => {
+          if (!cancelMutation.isPending) {
+            setCancelDialogOpen(false)
+          }
+        }}
+        onConfirm={() => {
+          if (myActiveBooking) {
+            void cancelMutation.mutateAsync(myActiveBooking.id)
+          }
+        }}
+      />
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {house.images.length > 0 ? (
@@ -140,6 +190,29 @@ export function HouseDetailsPage() {
           </div>
         )}
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle role="heading" aria-level={2}>
+            {t('houses.mapTitle')}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {house.location.streetAddress ? (
+            <p className="text-sm">
+              <span className="font-medium">{t('houses.streetAddress')}: </span>
+              {house.location.streetAddress}
+            </p>
+          ) : null}
+          <HouseLocationMap
+            streetAddress={house.location.streetAddress}
+            cityName={house.location.city?.name}
+            stateName={house.location.state?.name}
+            latitude={house.location.latitude}
+            longitude={house.location.longitude}
+          />
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
         <Card>
@@ -224,20 +297,6 @@ export function HouseDetailsPage() {
           </CardContent>
         </Card>
       </div>
-
-      <MovingUpsellDialog
-        open={upsellOpen}
-        bookingId={bookingId}
-        houseId={house.id}
-        onYes={() => {
-          setUpsellOpen(false)
-          const params = new URLSearchParams()
-          if (bookingId) params.set('bookingId', bookingId)
-          params.set('houseId', house.id)
-          navigate(`/hire-moving?${params.toString()}`)
-        }}
-        onNo={() => setUpsellOpen(false)}
-      />
     </section>
   )
 }

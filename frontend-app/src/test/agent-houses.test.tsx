@@ -97,7 +97,7 @@ describe('agent houses list', () => {
   it('renders own listings with edit and delete actions', async () => {
     renderWithProviders(<AgentHousesPage />, { initialEntries: ['/agent/houses'] })
 
-    expect(await screen.findByRole('heading', { name: /my housing listings/i })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: /my house listings/i })).toBeInTheDocument()
     expect(await screen.findByText(/river view condo/i)).toBeInTheDocument()
     expect(screen.getByText(/yangon/i)).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /post a house/i })).toBeInTheDocument()

@@ -1,4 +1,4 @@
-import { body, param } from 'express-validator';
+import { body, param, query } from 'express-validator';
 
 const allowedRoles = ['normal', 'agent', 'driver', 'admin'];
 const verificationActions = ['pending', 'approve', 'reject'];
@@ -34,4 +34,13 @@ export const adminRegistrationLookupValidator = [...userIdParamValidator];
 export const adminAssignMovingRequestValidator = [
   param('id').trim().notEmpty().withMessage('Moving request id is required.'),
   body('driverUserId').trim().notEmpty().withMessage('driverUserId is required.')
+];
+
+export const adminHouseBookingReportValidator = [
+  query('from').optional().isISO8601().withMessage('from must be a valid date.'),
+  query('to').optional().isISO8601().withMessage('to must be a valid date.'),
+  query('status').optional().isIn(['PENDING', 'CONFIRMED', 'CANCELLED', 'pending', 'confirmed', 'cancelled']).withMessage('status is invalid.'),
+  query('houseId').optional().trim(),
+  query('agentId').optional().trim(),
+  query('userId').optional().trim()
 ];

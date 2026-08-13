@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { HouseLocationMap } from '@/features/houses/components/HouseLocationMap'
 import { masterDataApi } from '@/features/master-data/api/master-data-api'
 import { ApiRequestError } from '@/lib/api/client'
 
@@ -115,11 +116,15 @@ export function AgentHouseFormPage() {
 
   useEffect(() => {
     if (existingHouse) {
-      reset(houseToFormValues(existingHouse))
+      reset({ ...houseToFormValues(existingHouse), postChannel: 'agent' })
     }
   }, [existingHouse, reset])
 
   const selectedStateId = watch('stateId')
+  const selectedCityId = watch('cityId')
+  const streetAddress = watch('streetAddress')
+  const latitude = watch('latitude')
+  const longitude = watch('longitude')
   const image1 = watch('image1')
   const image2 = watch('image2')
   const image3 = watch('image3')
@@ -146,6 +151,9 @@ export function AgentHouseFormPage() {
     if (!selectedStateId) return items
     return items.filter((city) => !city.stateId || city.stateId === selectedStateId)
   }, [citiesQuery.data?.items, selectedStateId])
+
+  const selectedCityName = filteredCities.find((item) => item.id === selectedCityId)?.name
+  const selectedStateName = (statesQuery.data?.items ?? []).find((item) => item.id === selectedStateId)?.name
 
   const masterDataLoading =
     propertyTypesQuery.isLoading ||
@@ -177,7 +185,7 @@ export function AgentHouseFormPage() {
     }
 
     setFormError(null)
-    const payload = toAgentHouseInput(values)
+    const payload = toAgentHouseInput({ ...values, postChannel: 'agent' })
 
     try {
       if (isEdit && id) {
@@ -275,6 +283,7 @@ export function AgentHouseFormPage() {
             <input type="hidden" {...register('image3')} />
             <input type="hidden" {...register('image4')} />
             <input type="hidden" {...register('image5')} />
+            <input type="hidden" {...register('postChannel')} />
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2 sm:col-span-2">
@@ -292,20 +301,6 @@ export function AgentHouseFormPage() {
                   {...register('description')}
                   disabled={!verified}
                 />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="postChannel">{t('agent.houses.postChannel')}</Label>
-                <select
-                  id="postChannel"
-                  className={selectClassName}
-                  {...register('postChannel')}
-                  disabled={!verified}
-                >
-                  <option value="agent">{t('agent.houses.postChannelAgent')}</option>
-                  <option value="roommate">{t('agent.houses.postChannelRoommate')}</option>
-                </select>
-                <FieldError message={errors.postChannel?.message} />
               </div>
 
               <div className="space-y-2">
@@ -341,24 +336,6 @@ export function AgentHouseFormPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="contractTypeId">{t('houses.contractType')}</Label>
-                <select
-                  id="contractTypeId"
-                  className={selectClassName}
-                  {...register('contractTypeId')}
-                  disabled={!verified}
-                >
-                  <option value="">{t('houses.filters.any')}</option>
-                  {(contractTypesQuery.data?.items ?? []).map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.name}
-                    </option>
-                  ))}
-                </select>
-                <FieldError message={errors.contractTypeId?.message} />
-              </div>
-
-              <div className="space-y-2">
                 <Label htmlFor="floorLevelId">{t('agent.houses.fields.floorLevel')}</Label>
                 <select
                   id="floorLevelId"
@@ -378,32 +355,6 @@ export function AgentHouseFormPage() {
               <div className="space-y-2">
                 <Label htmlFor="areaSize">{t('houses.areaSize')}</Label>
                 <Input id="areaSize" {...register('areaSize')} disabled={!verified} />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="monthlyFees">{t('houses.monthlyFeesLabel')}</Label>
-                <Input
-                  id="monthlyFees"
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  {...register('monthlyFees')}
-                  disabled={!verified}
-                />
-                <FieldError message={errors.monthlyFees?.message} />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="depositAmount">{t('houses.depositLabel')}</Label>
-                <Input
-                  id="depositAmount"
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  {...register('depositAmount')}
-                  disabled={!verified}
-                />
-                <FieldError message={errors.depositAmount?.message} />
               </div>
 
               <div className="space-y-2">
@@ -431,79 +382,157 @@ export function AgentHouseFormPage() {
                 />
                 <FieldError message={errors.bathrooms?.message} />
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="stateId">{t('agent.state')}</Label>
-                <select
-                  id="stateId"
-                  className={selectClassName}
-                  {...register('stateId')}
-                  disabled={!verified}
-                >
-                  <option value="">{t('houses.filters.any')}</option>
-                  {(statesQuery.data?.items ?? []).map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.name}
-                    </option>
-                  ))}
-                </select>
-                <FieldError message={errors.stateId?.message} />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="cityId">{t('agent.city')}</Label>
-                <select
-                  id="cityId"
-                  className={selectClassName}
-                  {...register('cityId')}
-                  disabled={!verified}
-                >
-                  <option value="">{t('houses.filters.any')}</option>
-                  {filteredCities.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.name}
-                    </option>
-                  ))}
-                </select>
-                <FieldError message={errors.cityId?.message} />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="contactPhoneNumber">{t('houses.contactPhone')}</Label>
-                <Input
-                  id="contactPhoneNumber"
-                  {...register('contactPhoneNumber')}
-                  disabled={!verified}
-                />
-                <FieldError message={errors.contactPhoneNumber?.message} />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="contactTelegram">{t('agent.telegram')}</Label>
-                <Input id="contactTelegram" {...register('contactTelegram')} disabled={!verified} />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="contactViber">{t('agent.viber')}</Label>
-                <Input id="contactViber" {...register('contactViber')} disabled={!verified} />
-              </div>
-
-              <div className="space-y-2 sm:col-span-2">
-                <Label htmlFor="nearbyPlaces">{t('houses.nearbyPlaces')}</Label>
-                <Input id="nearbyPlaces" {...register('nearbyPlaces')} disabled={!verified} />
-              </div>
-
-              <div className="space-y-2 sm:col-span-2">
-                <Label htmlFor="houseRules">{t('houses.houseRules')}</Label>
-                <textarea
-                  id="houseRules"
-                  rows={3}
-                  className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  {...register('houseRules')}
-                  disabled={!verified}
-                />
-              </div>
             </div>
+
+            <fieldset className="space-y-4 rounded-md border p-4">
+              <legend className="px-1 text-sm font-medium">{t('agent.houses.contractAndFee')}</legend>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="contractTypeId">{t('houses.contractType')}</Label>
+                  <select
+                    id="contractTypeId"
+                    className={selectClassName}
+                    {...register('contractTypeId')}
+                    disabled={!verified}
+                  >
+                    <option value="">{t('houses.filters.any')}</option>
+                    {(contractTypesQuery.data?.items ?? []).map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.name}
+                      </option>
+                    ))}
+                  </select>
+                  <FieldError message={errors.contractTypeId?.message} />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="monthlyFees">{t('houses.monthlyFeesLabel')}</Label>
+                  <Input
+                    id="monthlyFees"
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    {...register('monthlyFees')}
+                    disabled={!verified}
+                  />
+                  <FieldError message={errors.monthlyFees?.message} />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="depositAmount">{t('houses.depositLabel')}</Label>
+                  <Input
+                    id="depositAmount"
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    {...register('depositAmount')}
+                    disabled={!verified}
+                  />
+                  <FieldError message={errors.depositAmount?.message} />
+                </div>
+              </div>
+            </fieldset>
+
+            <fieldset className="space-y-4 rounded-md border p-4">
+              <legend className="px-1 text-sm font-medium">{t('agent.houses.location')}</legend>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="stateId">{t('agent.state')}</Label>
+                  <select
+                    id="stateId"
+                    className={selectClassName}
+                    {...register('stateId')}
+                    disabled={!verified}
+                  >
+                    <option value="">{t('houses.filters.any')}</option>
+                    {(statesQuery.data?.items ?? []).map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.name}
+                      </option>
+                    ))}
+                  </select>
+                  <FieldError message={errors.stateId?.message} />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="cityId">{t('agent.city')}</Label>
+                  <select
+                    id="cityId"
+                    className={selectClassName}
+                    {...register('cityId')}
+                    disabled={!verified}
+                  >
+                    <option value="">{t('houses.filters.any')}</option>
+                    {filteredCities.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.name}
+                      </option>
+                    ))}
+                  </select>
+                  <FieldError message={errors.cityId?.message} />
+                </div>
+
+                <div className="space-y-2 sm:col-span-2">
+                  <Label htmlFor="streetAddress">{t('houses.streetAddress')}</Label>
+                  <Input id="streetAddress" {...register('streetAddress')} disabled={!verified} />
+                  <FieldError message={errors.streetAddress?.message} />
+                </div>
+
+                <div className="space-y-2 sm:col-span-2">
+                  <Label htmlFor="nearbyPlaces">{t('houses.nearbyPlaces')}</Label>
+                  <Input id="nearbyPlaces" {...register('nearbyPlaces')} disabled={!verified} />
+                </div>
+
+                <div className="space-y-2 sm:col-span-2">
+                  <p className="text-sm font-medium">{t('houses.mapTitle')}</p>
+                  <HouseLocationMap
+                    streetAddress={streetAddress}
+                    cityName={selectedCityName}
+                    stateName={selectedStateName}
+                    latitude={latitude}
+                    longitude={longitude}
+                    interactive
+                    disabled={!verified}
+                    onPinChange={(coords) => {
+                      if (!coords) {
+                        setValue('latitude', '', { shouldDirty: true })
+                        setValue('longitude', '', { shouldDirty: true })
+                        return
+                      }
+                      setValue('latitude', String(coords.latitude), { shouldDirty: true })
+                      setValue('longitude', String(coords.longitude), { shouldDirty: true })
+                      clearErrors(['latitude', 'longitude'])
+                    }}
+                  />
+                  <FieldError message={errors.latitude?.message ?? errors.longitude?.message} />
+                </div>
+              </div>
+            </fieldset>
+
+            <fieldset className="space-y-4 rounded-md border p-4">
+              <legend className="px-1 text-sm font-medium">{t('agent.houses.contactInformation')}</legend>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="contactPhoneNumber">{t('houses.contactPhone')}</Label>
+                  <Input
+                    id="contactPhoneNumber"
+                    {...register('contactPhoneNumber')}
+                    disabled={!verified}
+                  />
+                  <FieldError message={errors.contactPhoneNumber?.message} />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="contactTelegram">{t('agent.telegram')}</Label>
+                  <Input id="contactTelegram" {...register('contactTelegram')} disabled={!verified} />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="contactViber">{t('agent.viber')}</Label>
+                  <Input id="contactViber" {...register('contactViber')} disabled={!verified} />
+                </div>
+              </div>
+            </fieldset>
 
             <div className="space-y-3">
               <div>
@@ -551,6 +580,31 @@ export function AgentHouseFormPage() {
                   </div>
                 )}
               />
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="postChannel">{t('agent.houses.postChannel')}</Label>
+                <select
+                  id="postChannel"
+                  className={`${selectClassName} disabled:cursor-not-allowed disabled:opacity-50`}
+                  value="agent"
+                  disabled
+                >
+                  <option value="agent">{t('agent.houses.postChannelAgent')}</option>
+                </select>
+              </div>
+
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="houseRules">{t('houses.houseRules')}</Label>
+                <textarea
+                  id="houseRules"
+                  rows={3}
+                  className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  {...register('houseRules')}
+                  disabled={!verified}
+                />
+              </div>
             </div>
 
             {formError ? (

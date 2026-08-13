@@ -87,6 +87,15 @@ export type AdminOverviewReport = {
   }
 }
 
+export type HouseBookingReportFilters = {
+  from?: string
+  to?: string
+  status?: string
+  houseId?: string
+  agentId?: string
+  userId?: string
+}
+
 export type AdminMasterDataEntity =
   | 'property-types'
   | 'states'

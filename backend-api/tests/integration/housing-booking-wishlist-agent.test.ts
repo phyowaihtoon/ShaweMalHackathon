@@ -50,6 +50,9 @@ interface MockHouse {
   contactPhoneNumber: string;
   cityId: string;
   stateId: string;
+  streetAddress?: string;
+  latitude?: number | null;
+  longitude?: number | null;
   nearbyPlaces?: string;
   availability: 'AVAILABLE' | 'NOT_AVAILABLE';
   createdAt: Date;
@@ -63,6 +66,9 @@ interface MockBooking {
   status: 'PENDING' | 'CONFIRMED' | 'CANCELLED';
   createdAt: Date;
   updatedAt: Date;
+  cancelledAt?: Date | null;
+  cancelledByUserId?: string | null;
+  cancelledByRole?: 'USER' | 'AGENT' | 'ADMIN' | null;
 }
 
 interface MockWishlist {
@@ -74,7 +80,8 @@ interface MockWishlist {
 
 const roles = new Map<string, MockRole>([
   ['normal', { id: 'role-normal', name: 'normal' }],
-  ['agent', { id: 'role-agent', name: 'agent' }]
+  ['agent', { id: 'role-agent', name: 'agent' }],
+  ['admin', { id: 'role-admin', name: 'admin' }]
 ]);
 
 const users = new Map<string, MockUser>();
@@ -147,6 +154,56 @@ const hydrateHouse = (house: MockHouse) => {
       phone: agent?.phone ?? '0000000',
       verificationStatus: agent?.verificationStatus ?? 'PENDING'
     }
+  };
+};
+
+const mapBookingDetail = (item: MockBooking) => {
+  const house = houses.get(item.houseId);
+  const booker = users.get(item.userId);
+  const agent = house ? users.get(house.agentId) : undefined;
+  const cancelledBy = item.cancelledByUserId ? users.get(item.cancelledByUserId) : undefined;
+
+  return {
+    ...item,
+    house: house
+      ? {
+          id: house.id,
+          title: house.title,
+          monthlyFees: house.monthlyFees,
+          availability: house.availability,
+          agentId: house.agentId,
+          city: {
+            id: house.cityId,
+            name: cities.get(house.cityId)?.name ?? 'Unknown'
+          },
+          state: {
+            id: house.stateId,
+            name: states.get(house.stateId)?.name ?? 'Unknown'
+          },
+          agent: agent
+            ? {
+                id: agent.id,
+                name: agent.name,
+                email: agent.email,
+                phone: agent.phone
+              }
+            : null
+        }
+      : null,
+    user: booker
+      ? {
+          id: booker.id,
+          name: booker.name,
+          email: booker.email,
+          phone: booker.phone
+        }
+      : null,
+    cancelledByUser: cancelledBy
+      ? {
+          id: cancelledBy.id,
+          name: cancelledBy.name
+        }
+      : null
   };
 };
 
@@ -247,6 +304,9 @@ jest.mock('../../src/prisma/client', () => {
           contactPhoneNumber: data.contactPhoneNumber,
           cityId: data.cityId,
           stateId: data.stateId,
+          streetAddress: data.streetAddress,
+          latitude: data.latitude === undefined || data.latitude === null ? null : Number(data.latitude),
+          longitude: data.longitude === undefined || data.longitude === null ? null : Number(data.longitude),
           nearbyPlaces: data.nearbyPlaces,
           availability: data.availability,
           createdAt: now,
@@ -278,6 +338,21 @@ jest.mock('../../src/prisma/client', () => {
       delete: jest.fn()
     },
     booking: {
+      findFirst: jest.fn(async ({ where }: { where: { userId: string; houseId: string; status?: { not: string } } }) => {
+        return (
+          bookings.find((item) => {
+            if (item.userId !== where.userId || item.houseId !== where.houseId) {
+              return false;
+            }
+
+            if (where.status?.not && item.status === where.status.not) {
+              return false;
+            }
+
+            return true;
+          }) ?? null
+        );
+      }),
       create: jest.fn(async ({ data }: { data: { userId: string; houseId: string; status: MockBooking['status'] } }) => {
         const booking: MockBooking = {
           id: `booking-${bookings.length + 1}`,
@@ -285,11 +360,62 @@ jest.mock('../../src/prisma/client', () => {
           houseId: data.houseId,
           status: data.status,
           createdAt: new Date(),
-          updatedAt: new Date()
+          updatedAt: new Date(),
+          cancelledAt: null,
+          cancelledByUserId: null,
+          cancelledByRole: null
         };
 
         bookings.push(booking);
         return booking;
+      }),
+      findMany: jest.fn(async ({ where }: { where?: any }) => {
+        return bookings
+          .filter((item) => {
+            if (where?.userId && item.userId !== where.userId) {
+              return false;
+            }
+
+            if (where?.houseId && item.houseId !== where.houseId) {
+              return false;
+            }
+
+            if (where?.status && item.status !== where.status) {
+              return false;
+            }
+
+            if (where?.house?.agentId) {
+              const house = houses.get(item.houseId);
+              if (house?.agentId !== where.house.agentId) {
+                return false;
+              }
+            }
+
+            if (where?.createdAt?.gte && item.createdAt < where.createdAt.gte) {
+              return false;
+            }
+
+            if (where?.createdAt?.lte && item.createdAt > where.createdAt.lte) {
+              return false;
+            }
+
+            return true;
+          })
+          .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+          .map((item) => mapBookingDetail(item));
+      }),
+      findUnique: jest.fn(async ({ where }: { where: { id: string } }) => {
+        const booking = bookings.find((item) => item.id === where.id);
+        return booking ? mapBookingDetail(booking) : null;
+      }),
+      update: jest.fn(async ({ where, data }: { where: { id: string }; data: Partial<MockBooking> }) => {
+        const booking = bookings.find((item) => item.id === where.id);
+        if (!booking) {
+          return null;
+        }
+
+        Object.assign(booking, data, { updatedAt: new Date() });
+        return mapBookingDetail(booking);
       })
     },
     wishlist: {
@@ -373,6 +499,7 @@ jest.mock('../../src/prisma/client', () => {
 const normalUserToken = signJwt({ sub: 'user-normal', email: 'normal@example.com', roles: ['normal'] }, '1h');
 const unverifiedAgentToken = signJwt({ sub: 'agent-pending', email: 'agent.pending@example.com', roles: ['agent'] }, '1h');
 const verifiedAgentToken = signJwt({ sub: 'agent-verified', email: 'agent.verified@example.com', roles: ['agent'] }, '1h');
+const adminToken = signJwt({ sub: 'user-admin', email: 'admin@example.com', roles: ['admin'] }, '1h');
 
 const seedBaseData = () => {
   users.clear();
@@ -410,6 +537,15 @@ const seedBaseData = () => {
     userRoles: [{ role: roles.get('agent') as MockRole }]
   });
 
+  users.set('user-admin', {
+    id: 'user-admin',
+    name: 'Admin User',
+    email: 'admin@example.com',
+    phone: '0900000000',
+    verificationStatus: 'VERIFIED',
+    userRoles: [{ role: roles.get('admin') as MockRole }]
+  });
+
   const now = new Date();
 
   houses.set('house-1', {
@@ -432,6 +568,9 @@ const seedBaseData = () => {
     contactPhoneNumber: '0999999999',
     cityId: 'city-1',
     stateId: 'state-1',
+    streetAddress: '42 Inya Road',
+    latitude: 16.8294,
+    longitude: 96.1356,
     nearbyPlaces: 'Mall, Hospital',
     availability: 'AVAILABLE',
     createdAt: now,
@@ -461,9 +600,12 @@ describe('Housing, booking, wishlist, and agent house APIs', () => {
     expect(detailResponse.body.success).toBe(true);
     expect(detailResponse.body.data.item.agent.name).toBe('Verified Agent');
     expect(detailResponse.body.data.item.amenities).toHaveLength(1);
+    expect(detailResponse.body.data.item.location.streetAddress).toBe('42 Inya Road');
+    expect(detailResponse.body.data.item.location.latitude).toBe(16.8294);
+    expect(detailResponse.body.data.item.location.longitude).toBe(96.1356);
   });
 
-  it('requires auth for booking and creates booking when authenticated', async () => {
+  it('requires auth for booking and creates a confirmed booking when authenticated (FR-HOUSE-004/006)', async () => {
     const unauthResponse = await request(app).post('/api/v1/houses/house-1/bookings').send({});
 
     expect(unauthResponse.status).toBe(401);
@@ -475,8 +617,77 @@ describe('Housing, booking, wishlist, and agent house APIs', () => {
 
     expect(bookingResponse.status).toBe(201);
     expect(bookingResponse.body.success).toBe(true);
+    expect(bookingResponse.body.data.booking.status).toBe('CONFIRMED');
     expect(bookings).toHaveLength(1);
-    expect(notifications).toHaveLength(1);
+    expect(notifications).toHaveLength(2);
+    expect(notifications.map((item) => item.userId)).toEqual(expect.arrayContaining(['user-normal', 'agent-verified']));
+
+    const duplicateResponse = await request(app)
+      .post('/api/v1/houses/house-1/bookings')
+      .set('Authorization', `Bearer ${normalUserToken}`)
+      .send({});
+
+    expect(duplicateResponse.status).toBe(409);
+    expect(duplicateResponse.body.errors.code).toBe('BOOKING_ALREADY_EXISTS');
+  });
+
+  it('lets the listing agent list booker details and cancel with actor tracking (FR-AGENT-004)', async () => {
+    await request(app).post('/api/v1/houses/house-1/bookings').set('Authorization', `Bearer ${normalUserToken}`).send({});
+
+    const listResponse = await request(app).get('/api/v1/agent/bookings').set('Authorization', `Bearer ${verifiedAgentToken}`);
+
+    expect(listResponse.status).toBe(200);
+    expect(listResponse.body.data.items).toHaveLength(1);
+    expect(listResponse.body.data.items[0].user.email).toBe('normal@example.com');
+    expect(listResponse.body.data.items[0].user.phone).toBe('0911111111');
+
+    const bookingId = listResponse.body.data.items[0].id as string;
+    const cancelResponse = await request(app)
+      .patch(`/api/v1/bookings/${bookingId}/status`)
+      .set('Authorization', `Bearer ${verifiedAgentToken}`)
+      .send({ status: 'CANCELLED' });
+
+    expect(cancelResponse.status).toBe(200);
+    expect(cancelResponse.body.data.booking.status).toBe('CANCELLED');
+    expect(cancelResponse.body.data.booking.cancelledByRole).toBe('AGENT');
+    expect(cancelResponse.body.data.booking.cancelledByUserId).toBe('agent-verified');
+  });
+
+  it('lets the booking user cancel and records USER as cancelled-by (FR-HOUSE-008)', async () => {
+    const bookingResponse = await request(app)
+      .post('/api/v1/houses/house-1/bookings')
+      .set('Authorization', `Bearer ${normalUserToken}`)
+      .send({});
+
+    const bookingId = bookingResponse.body.data.booking.id as string;
+    const cancelResponse = await request(app)
+      .patch(`/api/v1/bookings/${bookingId}/status`)
+      .set('Authorization', `Bearer ${normalUserToken}`)
+      .send({ status: 'CANCELLED' });
+
+    expect(cancelResponse.status).toBe(200);
+    expect(cancelResponse.body.data.booking.cancelledByRole).toBe('USER');
+
+    const rebookResponse = await request(app)
+      .post('/api/v1/houses/house-1/bookings')
+      .set('Authorization', `Bearer ${normalUserToken}`)
+      .send({});
+
+    expect(rebookResponse.status).toBe(201);
+  });
+
+  it('lists all booking records for admin house booking report (FR-ADMIN-007)', async () => {
+    await request(app).post('/api/v1/houses/house-1/bookings').set('Authorization', `Bearer ${normalUserToken}`).send({});
+
+    const reportResponse = await request(app)
+      .get('/api/v1/admin/reports/bookings')
+      .query({ status: 'CONFIRMED' })
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    expect(reportResponse.status).toBe(200);
+    expect(reportResponse.body.data.items).toHaveLength(1);
+    expect(reportResponse.body.data.items[0].status).toBe('CONFIRMED');
+    expect(reportResponse.body.data.items[0].user.name).toBe('Normal User');
   });
 
   it('adds, lists, and removes wishlist items for authenticated users', async () => {
@@ -516,6 +727,9 @@ describe('Housing, booking, wishlist, and agent house APIs', () => {
       contactPhoneNumber: '0944444444',
       cityId: 'city-1',
       stateId: 'state-1',
+      streetAddress: '10 Inya Road',
+      latitude: 16.8301,
+      longitude: 96.1362,
       availability: 'available',
       imagePaths: ['uploads/houses/new-1.jpg'],
       amenityIds: ['amenity-wifi']
@@ -537,5 +751,32 @@ describe('Housing, booking, wishlist, and agent house APIs', () => {
     expect(allowedResponse.status).toBe(201);
     expect(allowedResponse.body.success).toBe(true);
     expect(allowedResponse.body.data.house.title).toBe('New Agent Listing');
+    expect(allowedResponse.body.data.house.streetAddress).toBe('10 Inya Road');
+    expect(allowedResponse.body.data.house.latitude).toBe(16.8301);
+    expect(allowedResponse.body.data.house.longitude).toBe(96.1362);
+  });
+
+  it('rejects house create when only one coordinate is provided', async () => {
+    const response = await request(app)
+      .post('/api/v1/agent/houses')
+      .set('Authorization', `Bearer ${verifiedAgentToken}`)
+      .send({
+        title: 'Partial Coordinates',
+        postChannel: 'agent',
+        propertyTypeId: 'ptype-apartment',
+        monthlyFees: 650,
+        depositAmount: 1300,
+        contractTypeId: 'contract-6m',
+        bedrooms: 2,
+        bathrooms: 1,
+        contactPhoneNumber: '0944444444',
+        cityId: 'city-1',
+        stateId: 'state-1',
+        latitude: 16.83,
+        availability: 'available',
+        imagePaths: ['uploads/houses/new-2.jpg']
+      });
+
+    expect(response.status).toBe(400);
   });
 });

@@ -8,6 +8,7 @@ import { AdminMasterDataEntityPage } from '@/features/admin/pages/AdminMasterDat
 import { AdminMasterDataPage } from '@/features/admin/pages/AdminMasterDataPage'
 import { AdminMovingAssignPage } from '@/features/admin/pages/AdminMovingAssignPage'
 import { AdminReportsPage } from '@/features/admin/pages/AdminReportsPage'
+import { AdminHouseBookingReportPage } from '@/features/admin/pages/AdminHouseBookingReportPage'
 import { AdminUsersPage } from '@/features/admin/pages/AdminUsersPage'
 import { AdminVerificationsPage } from '@/features/admin/pages/AdminVerificationsPage'
 import { AdminAuthGuard } from '@/app/router/guards'
@@ -36,6 +37,7 @@ export const adminRoutes: RouteObject[] = [
           { path: 'master-data', element: <AdminMasterDataPage /> },
           { path: 'master-data/:entity', element: <AdminMasterDataEntityPage /> },
           { path: 'reports', element: <AdminReportsPage /> },
+          { path: 'reports/bookings', element: <AdminHouseBookingReportPage /> },
         ],
       },
     ],

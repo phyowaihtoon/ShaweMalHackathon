@@ -46,6 +46,31 @@ describe('agent house form validation', () => {
       bedrooms: 2,
       imagePaths: ['uploads/houses/11111111-2222-3333-4444-555555555555.jpg'],
       amenityIds: ['a1'],
+      streetAddress: undefined,
+      latitude: null,
+      longitude: null,
+    })
+  })
+
+  it('requires latitude and longitude together when a pin is set', () => {
+    const errors = validateAgentHouseForm(baseValues({ latitude: '16.84' }), t)
+
+    expect(errors.latitude).toBe('agent.houses.coordsPair')
+    expect(errors.longitude).toBe('agent.houses.coordsPair')
+  })
+
+  it('maps optional street and coordinates into the API payload', () => {
+    const values = baseValues({
+      streetAddress: ' 42 Inya Road ',
+      latitude: '16.8294',
+      longitude: '96.1356',
+    })
+
+    expect(validateAgentHouseForm(values, t)).toEqual({})
+    expect(toAgentHouseInput(values)).toMatchObject({
+      streetAddress: '42 Inya Road',
+      latitude: 16.8294,
+      longitude: 96.1356,
     })
   })
 

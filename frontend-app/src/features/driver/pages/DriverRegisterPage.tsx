@@ -182,22 +182,6 @@ export function DriverRegisterPage() {
               error={errors.profilePhotoPath?.message}
             />
           </Field>
-          <Field label={t('driver.currentAddress')} error={errors.currentAddress?.message} className="sm:col-span-2">
-            <Input {...register('currentAddress')} />
-          </Field>
-          <Field label={t('moving.vehicleType')} error={errors.vehicleTypeId?.message}>
-            <select className={selectClassName} {...register('vehicleTypeId')}>
-              <option value="">{t('houses.filters.any')}</option>
-              {(vehiclesQuery.data?.items ?? []).map((vehicle) => (
-                <option key={vehicle.id} value={vehicle.id}>
-                  {vehicle.name}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Field label={t('driver.vehicleLicensePlateNumber')} error={errors.vehicleLicensePlateNumber?.message}>
-            <Input {...register('vehicleLicensePlateNumber')} />
-          </Field>
           <Field label={t('driver.vehiclePhotoPath')} error={errors.vehiclePhotoPath?.message} className="sm:col-span-2">
             <SingleImageUploadField
               path={watch('vehiclePhotoPath')}
@@ -213,6 +197,22 @@ export function DriverRegisterPage() {
               category="docs"
               error={errors.wheelTaxPhotoPath?.message}
             />
+          </Field>
+          <Field label={t('driver.currentAddress')} error={errors.currentAddress?.message} className="sm:col-span-2">
+            <Input {...register('currentAddress')} />
+          </Field>
+          <Field label={t('moving.vehicleType')} error={errors.vehicleTypeId?.message}>
+            <select className={selectClassName} {...register('vehicleTypeId')}>
+              <option value="">{t('houses.filters.any')}</option>
+              {(vehiclesQuery.data?.items ?? []).map((vehicle) => (
+                <option key={vehicle.id} value={vehicle.id}>
+                  {vehicle.name}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label={t('driver.vehicleLicensePlateNumber')} error={errors.vehicleLicensePlateNumber?.message}>
+            <Input {...register('vehicleLicensePlateNumber')} />
           </Field>
 
           {formError ? <p className="text-sm text-destructive sm:col-span-2">{formError}</p> : null}

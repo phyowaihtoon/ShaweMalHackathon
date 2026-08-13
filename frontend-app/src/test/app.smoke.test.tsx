@@ -36,6 +36,6 @@ describe('smoke', () => {
       </Routes>,
     )
 
-    expect(await screen.findByRole('heading', { name: /find your next home with shwemal/i })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: /find your next home with shawe mal/i })).toBeInTheDocument()
   })
 })

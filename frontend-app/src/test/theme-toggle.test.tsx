@@ -24,5 +24,10 @@ describe('theme toggle', () => {
     await user.click(await screen.findByText(/dark/i))
 
     expect(document.documentElement.classList.contains('dark')).toBe(true)
+
+    await user.click(screen.getByRole('button', { name: /theme/i }))
+    const lightItem = await screen.findByRole('menuitem', { name: /light/i })
+    expect(lightItem.className).toContain('text-popover-foreground')
+    expect(lightItem.className).toContain('hover:text-accent-foreground')
   })
 })

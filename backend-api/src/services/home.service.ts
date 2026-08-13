@@ -166,7 +166,7 @@ export const getHomePageContent = async () => {
     newsUpdates: [
       {
         id: 'news-welcome',
-        title: 'Welcome to ShweMal',
+        title: 'Welcome to Shawe Mal',
         summary: 'Discover houses, moving services, and roommates in one place.',
         publishedAt: new Date().toISOString()
       }

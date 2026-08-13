@@ -1,15 +1,20 @@
 import { Router } from 'express';
 
-import { listBookingsController, updateBookingStatusController } from '../../controllers/booking.controller';
+import {
+  getBookingController,
+  listBookingsController,
+  updateBookingStatusController
+} from '../../controllers/booking.controller';
 import { requireAuth } from '../../middleware/auth.middleware';
 import { validateMiddleware } from '../../middleware/validate.middleware';
 import { asyncHandler } from '../../utils/async-handler';
-import { bookingStatusUpdateValidator } from '../../validators/booking.validator';
+import { bookingIdParamValidator, bookingStatusUpdateValidator } from '../../validators/booking.validator';
 
 const bookingsRouter = Router();
 
 bookingsRouter.use(requireAuth);
 bookingsRouter.get('/', asyncHandler(listBookingsController));
+bookingsRouter.get('/:id', bookingIdParamValidator, validateMiddleware, asyncHandler(getBookingController));
 bookingsRouter.patch(
   '/:id/status',
   bookingStatusUpdateValidator,

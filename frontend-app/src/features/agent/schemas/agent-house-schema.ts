@@ -18,6 +18,9 @@ export type AgentHouseFormValues = {
   contactPhoneNumber: string
   cityId: string
   stateId: string
+  streetAddress: string
+  latitude: string
+  longitude: string
   nearbyPlaces: string
   availability: 'available' | 'not_available'
   image1: string
@@ -55,6 +58,9 @@ export function defaultAgentHouseFormValues(): AgentHouseFormValues {
     contactPhoneNumber: '',
     cityId: '',
     stateId: '',
+    streetAddress: '',
+    latitude: '',
+    longitude: '',
     nearbyPlaces: '',
     availability: 'available',
     image1: '',
@@ -102,6 +108,25 @@ export function validateAgentHouseForm(
   if (!values.stateId.trim()) errors.stateId = t('auth.required')
   if (!values.availability) errors.availability = t('auth.required')
 
+  const latitude = values.latitude.trim()
+  const longitude = values.longitude.trim()
+  if (Boolean(latitude) !== Boolean(longitude)) {
+    errors.latitude = t('agent.houses.coordsPair')
+    errors.longitude = t('agent.houses.coordsPair')
+  }
+  if (latitude) {
+    const parsed = Number(latitude)
+    if (!Number.isFinite(parsed) || parsed < -90 || parsed > 90) {
+      errors.latitude = t('agent.houses.invalidLatitude')
+    }
+  }
+  if (longitude) {
+    const parsed = Number(longitude)
+    if (!Number.isFinite(parsed) || parsed < -180 || parsed > 180) {
+      errors.longitude = t('agent.houses.invalidLongitude')
+    }
+  }
+
   const monthlyFees = parseNonNegativeNumber(values.monthlyFees)
   if (monthlyFees === null) errors.monthlyFees = t('agent.houses.nonNegativeNumber')
 
@@ -144,6 +169,9 @@ export function toAgentHouseInput(values: AgentHouseFormValues): AgentHouseInput
     contactPhoneNumber: values.contactPhoneNumber.trim(),
     cityId: values.cityId.trim(),
     stateId: values.stateId.trim(),
+    streetAddress: values.streetAddress.trim() || undefined,
+    latitude: values.latitude.trim() === '' ? null : Number(values.latitude),
+    longitude: values.longitude.trim() === '' ? null : Number(values.longitude),
     nearbyPlaces: values.nearbyPlaces.trim() || undefined,
     availability: values.availability,
     imagePaths,
@@ -184,6 +212,9 @@ export function houseToFormValues(house: AgentHouse): AgentHouseFormValues {
     contactPhoneNumber: house.contactPhoneNumber ?? '',
     cityId: house.city?.id ?? '',
     stateId: house.state?.id ?? '',
+    streetAddress: house.streetAddress ?? '',
+    latitude: house.latitude == null ? '' : String(house.latitude),
+    longitude: house.longitude == null ? '' : String(house.longitude),
     nearbyPlaces: house.nearbyPlaces ?? '',
     availability: normalizeAvailability(house.availability),
     image1: paths[0] ?? '',

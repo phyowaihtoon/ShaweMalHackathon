@@ -40,6 +40,9 @@ export type HouseDetails = {
     city?: NamedRef | null
     state?: NamedRef | null
     nearbyPlaces?: string | null
+    streetAddress?: string | null
+    latitude?: number | null
+    longitude?: number | null
   }
   propertyType?: NamedRef | null
   contractType?: (NamedRef & { durationMonths?: number }) | null

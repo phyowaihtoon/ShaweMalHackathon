@@ -21,11 +21,12 @@ describe('language toggle', () => {
       </Routes>,
     )
 
-    expect(await screen.findByText('ShweMal')).toBeInTheDocument()
+    expect(await screen.findByText('Shawe MaL')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: /language/i }))
     await user.click(await screen.findByText(/myanmar/i))
 
-    expect(await screen.findByText('ရွှေမယ်')).toBeInTheDocument()
+    expect(await screen.findByText('ရွှေ့မယ်')).toBeInTheDocument()
+    await i18n.changeLanguage('en')
   })
 })

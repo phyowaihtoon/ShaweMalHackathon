@@ -52,9 +52,14 @@ export function UserMenu() {
           <Link to="/agent-register">{t('nav.agentRegister')}</Link>
         </DropdownMenuItem>
         {user?.roles?.includes('agent') ? (
-          <DropdownMenuItem asChild>
-            <Link to="/agent/houses">{t('nav.agentHouses')}</Link>
-          </DropdownMenuItem>
+          <>
+            <DropdownMenuItem asChild>
+              <Link to="/agent/houses">{t('nav.agentHouses')}</Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link to="/agent/bookings">{t('nav.agentBookings')}</Link>
+            </DropdownMenuItem>
+          </>
         ) : null}
         <DropdownMenuItem asChild>
           <Link to="/driver-register">{t('nav.driverRegister')}</Link>

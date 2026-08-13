@@ -4,9 +4,10 @@
 - **Project Name**: ShweMal
 - **Document Type**: Software Requirement Specification (SRS)
 - **Platform**: Web Application
-- **Version**: 1.0
-- **Date**: 2026-08-11
+- **Version**: 1.1
+- **Date**: 2026-08-13
 - **Prepared For**: Product, Design, Development, QA, and Operations Teams
+- **Revision 1.1**: House booking workflow rewritten (confirmation page, confirmed-on-submit, duplicate prevention, agent booking list/cancel, cancellation actor tracking, dedicated admin house booking report). Application implementation of this workflow is pending a separate build confirmation.
 
 ---
 
@@ -46,6 +47,9 @@ The application contains:
 - Registered user with agent registration.
 - Must be admin-verified to publish housing listings.
 - Can post/edit/delete/view own housing information.
+- Can view the booking list for own posted houses, including details of the user who booked.
+- Can cancel bookings on own posted houses.
+- Can update house availability manually when a house is actually rented (booking does not change availability automatically).
 
 4. **Driver**
 - Registered user with driver registration.
@@ -55,7 +59,7 @@ The application contains:
 5. **Admin**
 - Uses admin portal only.
 - Verifies agents and drivers.
-- Creates users, assigns roles, manages master data, and views reports.
+- Creates users, assigns roles, manages master data, and views reports (including a dedicated house booking report).
 
 ---
 
@@ -103,6 +107,8 @@ The application contains:
 - Native mobile applications
 - Online payment gateway integration (if needed, handled in later phase)
 - Real-time chat system between users/agents/drivers (future enhancement)
+- Communication between the listing agent and the booking user after a house booking (phone, chat, or other contact is outside system control)
+- Automatic change of house availability when a booking is created or cancelled; if the house is actually rented, the agent shall change availability manually in the system
 
 ---
 
@@ -167,7 +173,7 @@ The application contains:
 - Clicking a house card shall open a details page with:
   - Full description
   - Amenities list
-  - Location
+  - Location (optional street address, optional latitude/longitude, and a map on the details page)
   - Pricing
   - Agent details
 
@@ -175,10 +181,24 @@ The application contains:
 - Logged-in users shall be able to book a house.
 - Visitors attempting to book shall be redirected to sign up/sign in first.
 
-### FR-HOUSE-005 Moving Upsell After Booking
-- After successful house booking, system shall ask whether to hire moving service.
-- If user selects Yes, Hire Moving Service page/modal shall open.
-- If user selects No, user shall still be able to hire moving service later from the **Hire Moving Service** link.
+### FR-HOUSE-005 Booking Confirmation Page
+- After a successful house booking, the system shall navigate to a dedicated **booking confirmation page** (not a popup or dialog).
+- The confirmation page shall display a thank-you statement that includes that the **agent will contact the user soon**.
+- The same confirmation page shall offer **Hire a moving service**.
+- If the user accepts, the system shall redirect to the **Hire Moving Service** page (preserving booking and house context).
+- If the user declines, the user shall remain on the confirmation page and shall still be able to hire moving service later from the **Hire Moving Service** navigation link.
+
+### FR-HOUSE-006 Booking Status on Submit
+- Once a booking is submitted successfully, booking status shall be **Confirmed**.
+- Status **Pending** is retained in the data model and admin report filters for historical or legacy records; it is not used on the new booking happy path.
+
+### FR-HOUSE-007 Duplicate Booking Rule
+- The same user shall not be able to book the same house twice while an existing booking for that user and house is not yet **Cancelled**.
+- After a booking is cancelled, the same user may book that house again.
+
+### FR-HOUSE-008 User Cancel Booking
+- The booking user shall be able to cancel a non-cancelled booking via **Profile → History → Booking history → house details → Cancel Booking**.
+- Only bookings that are not already **Cancelled** can be cancelled.
 
 ## 7.4 Housing Agent Module
 ### FR-AGENT-001 Agent Registration
@@ -194,6 +214,13 @@ The application contains:
   - Edit housing info
   - Delete housing info
   - View own housing info
+  - Change house availability (Available / Not Available) manually, including when a booked house is actually rented
+
+### FR-AGENT-004 House Bookings
+- The listing agent shall receive an in-app notification whenever a user books one of the agent’s posted houses.
+- The agent shall be able to view a booking list for own posted houses.
+- The booking list and booking details shall include the details of the user who booked (name, email, and phone as stored on the user account).
+- The agent shall be able to cancel a booking on own posted houses from that list or detail view.
 
 ## 7.5 Driver Module
 ### FR-DRIVER-001 Driver Registration
@@ -262,6 +289,8 @@ The application contains:
   - Booking history
   - Moving history
   - Notifications
+- From booking history, the user shall open house details for a booking.
+- For a non-cancelled booking, house details shall provide **Cancel Booking**.
 
 ### FR-PROFILE-003 Ratings and Reviews
 - User shall be able to submit reviews and ratings for agents and drivers.
@@ -273,7 +302,9 @@ The application contains:
 ### FR-NOTI-001 Notification Types
 - System shall notify users for:
   - Confirmed account registration
-  - House booking status
+  - House booking confirmation to the booking user
+  - New house booking on an agent’s posted house (to the listing agent)
+  - House booking cancellation to the booking user (and to the listing agent when cancelled by the booking user)
   - New moving request notifications to drivers
   - Moving booking completion
   - Driver status updates
@@ -301,6 +332,14 @@ The application contains:
 
 ### FR-ADMIN-006 Reports
 - Admin shall view reports for operational and business metrics.
+
+### FR-ADMIN-007 House Booking Report
+- Admin shall have a **House booking report**, separate from the overview dashboard, that lists all booking records with statuses **Pending**, **Confirmed**, and **Cancelled**.
+- Admin shall be able to filter the report by at least:
+  - Booking date (from / to)
+  - Booking status
+- Additional filter criteria (house, listing agent, booking user) are should-have.
+- Each record shall include: booking id, booking date, status, house, listing agent, booker identity, and cancelled-by (booking user or agent) when the booking is cancelled.
 
 ---
 
@@ -343,6 +382,8 @@ The application contains:
 - Location:
   - City
   - State
+  - Street address (optional)
+  - Coordinates (optional latitude and longitude; when omitted the details map may show an approximate township or street search)
 - Nearby Places (text and/or tagged values):
   - School
   - University
@@ -354,6 +395,7 @@ The application contains:
 - Availability:
   - Available
   - Not Available
+- Availability is maintained by the listing agent. Booking create or cancel shall not automatically change availability.
 
 ### Amenities & Facilities
 - AIR CONDITIONER
@@ -502,7 +544,24 @@ The application contains:
 - Relax silent
 - Playing gym
 
-## 8.8 Admin Master Data Objects
+## 8.8 House Booking Record
+- id (UUID/string, unique, required)
+- userId (reference to booking user, required)
+- houseId (reference to House, required)
+- status (required, enum: PENDING, CONFIRMED, CANCELLED)
+  - New successful bookings shall be created as CONFIRMED
+  - PENDING is retained for historical or legacy records and admin filtering
+- createdAt (datetime, required)
+- updatedAt (datetime, required)
+- cancelledAt (datetime, optional; set when status becomes CANCELLED)
+- cancelledByUserId (reference to User, optional; the user who performed the cancellation)
+- cancelledByRole (optional, enum: USER, AGENT, ADMIN)
+  - USER = booking user
+  - AGENT = listing agent
+  - ADMIN = operational cancel if used; primary UI paths are USER and AGENT
+- The same user shall have at most one non-cancelled booking per house.
+
+## 8.9 Admin Master Data Objects
 The following reference data objects are identified as likely admin-managed master data based on the specification. These objects should support CRUD operations from the admin portal and be reusable across houses, moving requests, users, and reports.
 
 ### MD-001 Property Type
@@ -603,14 +662,22 @@ The following reference data objects are identified as likely admin-managed mast
 4. Participating in moving jobs requires driver role and admin verification status = Verified.
 5. Only admin can access admin portal modules.
 6. Role assignment is controlled by admin.
-7. After house booking, user is prompted to hire moving service.
-8. If user declines moving service at booking time, user can still submit a moving request later from the **Hire Moving Service** link.
-9. Roommate post requires authenticated user.
-10. Wishlist requires authenticated user.
-11. On moving request submission, system sends notification to all verified drivers.
-12. The first driver who accepts a moving request is assigned to that request and status changes to **Accepted**.
-13. Once a moving request is **Accepted**, other drivers cannot accept the same request.
-14. If no driver accepts a request, admin can manually assign it to a specific verified driver.
+7. After a successful house booking, the user is shown a dedicated confirmation page (not a popup) with a thank-you statement that includes that the agent will contact the user soon, and is offered hire moving service from that page.
+8. If the user declines moving service at booking time, the user can still submit a moving request later from the **Hire Moving Service** link.
+9. Successful house booking submit sets booking status to **Confirmed**.
+10. The same user cannot book the same house again while a non-cancelled booking for that pair exists.
+11. The listing agent is notified in-app when a booking is created for one of the agent’s posted houses.
+12. The listing agent can list bookings for own houses, view booker details, and cancel those bookings.
+13. The booking user can cancel via Profile → History → Booking history → house details → Cancel Booking.
+14. Cancellation shall record who cancelled (booking user or listing agent).
+15. Agent and booking-user communication after booking is outside system control.
+16. House availability is not changed automatically by booking; if the house is actually rented, the agent changes availability manually.
+17. Roommate post requires authenticated user.
+18. Wishlist requires authenticated user.
+19. On moving request submission, system sends notification to all verified drivers.
+20. The first driver who accepts a moving request is assigned to that request and status changes to **Accepted**.
+21. Once a moving request is **Accepted**, other drivers cannot accept the same request.
+22. If no driver accepts a request, admin can manually assign it to a specific verified driver.
 
 ---
 
@@ -627,12 +694,30 @@ The following reference data objects are identified as likely admin-managed mast
 2. Admin reviews and verifies.
 3. Verified driver becomes eligible for assigned moving jobs.
 
-## 10.3 House Booking with Moving Prompt
-1. User selects house and books.
-2. Booking confirmation shown.
-3. System asks: Hire moving service?
-4. If Yes, moving form opens and user submits request.
-5. If No, user can still open **Hire Moving Service** later from navigation and submit a request.
+## 10.3 House Booking Workflow
+1. User selects a house and books (authenticated; visitors are redirected to sign in).
+2. System creates the booking with status **Confirmed**.
+3. System notifies the listing agent that a booking occurred on the posted house.
+4. System navigates the booking user to a dedicated **booking confirmation page** (not a popup).
+5. The confirmation page shows a thank-you statement that includes that the agent will contact the user soon, and offers **Hire a moving service**.
+6. If the user accepts, the system redirects to the **Hire Moving Service** page.
+7. If the user declines, the user remains on the confirmation page and can still open **Hire Moving Service** later from navigation.
+8. The listing agent can view the booking list for own posted houses and the details of the user who booked.
+9. The listing agent can cancel the booking.
+10. The booking user can cancel via Profile → History → Booking history → house details → Cancel Booking.
+11. The system records whether cancellation was performed by the listing agent or the booking user.
+12. Further communication between agent and booking user is outside the system.
+13. If the house is actually rented, the agent changes that house’s availability manually in the system.
+
+### 10.3.1 House Booking Status Definitions
+1. **Confirmed**
+- Set immediately when a booking is submitted successfully.
+2. **Cancelled**
+- Set when the listing agent or the booking user cancels the booking.
+- `cancelledByRole` records AGENT or USER (or ADMIN if an operational cancel is used).
+3. **Pending**
+- Retained for historical or legacy records and admin report filtering.
+- Not used when creating a booking on the current workflow.
 
 ## 10.4 Moving Job Lifecycle
 1. User submits moving request.
@@ -674,7 +759,7 @@ Minimum reports should include:
 2. Agent verification status summary
 3. Driver verification status summary
 4. Housing listings counts by city/type/availability
-5. House booking trends and status summary
+5. House booking report: list of all booking records (Pending, Confirmed, Cancelled) with filters for booking date (from/to), booking status, and optional house/agent/user criteria
 6. Moving service request and completion summary
 7. Top-performing agents/drivers by ratings
 
@@ -731,13 +816,15 @@ Minimum reports should include:
 The first release is accepted when:
 1. Public portal navigation and core pages work as specified.
 2. Visitors can search/view houses without login.
-3. Authenticated users can book houses and submit moving requests.
-4. Verified agents can manage housing listings.
-5. Verified drivers can process assigned moving jobs and update statuses.
-6. Roommate browse/post workflows are functional.
-7. Profile, wishlist, notifications, and histories are functional.
-8. Admin can verify users, manage roles/master data, and view reports.
-9. Required data fields and validation rules are implemented according to this specification.
+3. Authenticated users can book houses (confirmation page, confirmed status, no duplicate active booking) and submit moving requests.
+4. Verified agents can manage housing listings, view bookings on own houses, and cancel those bookings.
+5. Booking users and agents can cancel bookings; the system records who cancelled.
+6. Admin can open a dedicated house booking report with date and status filters.
+7. Verified drivers can process assigned moving jobs and update statuses.
+8. Roommate browse/post workflows are functional.
+9. Profile, wishlist, notifications, and histories are functional.
+10. Admin can verify users, manage roles/master data, and view reports.
+11. Required data fields and validation rules are implemented according to this specification.
 
 ---
 
@@ -745,8 +832,9 @@ The first release is accepted when:
 1. Final list of admin master data objects and each field definition.
 2. Exact report layouts and export formats (PDF/Excel/CSV).
 3. Whether payment collection is in-scope for first release.
-4. Whether agent-driver direct communication is required.
-5. Final status values for booking and moving lifecycle states.
+4. Whether agent-driver direct communication is required (agent–booking-user communication is out of scope).
+5. Final status values for **moving** lifecycle states.
+6. House booking statuses for the current workflow are **Confirmed** on submit and **Cancelled** on cancel; **Pending** remains for legacy/admin filter only.
 
 ---
 
@@ -760,7 +848,7 @@ The `backend-api/` project implements the server-side scope of this specificatio
 - Public master-data reads for dropdown/filter values (active records only)
 - Prisma seed includes §8.3 / MD-009 amenities (`AIR CONDITIONER` … `EV CHARGER`) with General/Building/Utility categories, MD-007 floor levels (Ground Floor / `0` through 20th Floor / `20`), plus roles, status codes, Yangon locations, property types, vehicle types, and admin user
 - Self-service agent and driver registration via `/registrations/*` (assigns role, creates profile, sets verification to pending)
-- Booking lifecycle with confirm/cancel status updates
+- Booking lifecycle with confirm/cancel status updates (current code still creates bookings as PENDING and uses a moving upsell dialog; SRS v1.1 house booking workflow is specified ahead of implementation)
 - Moving requests include `estimatedEarnings` for driver job visibility (FR-DRIVER-005)
 - Admin reports support optional `from` and `to` query parameters for period filtering
 - MD-010 Role master data managed at `/admin/master-data/roles`
@@ -801,7 +889,7 @@ The `frontend-app/` project is an independent Vite + React + TypeScript applicat
 ### Increment A implemented (public auth, home, finding house, agent register)
 - **FR-AUTH-001..003 / FR-PROFILE-004**: Public header switches to profile menu + notifications after login; Sign Up/Sign In hidden; logout wired; Remember Me kept; admin destinations require `admin` role, normal users remain on the public portal.
 - **FR-HOME-001..005**: Home consumes `GET /home` (featured, popular, news, verified agents, partner movers, reviews). Global search navigates to `/finding-house?city=…`. House cards support wishlist hearts; guests are prompted to sign in. Wishlist uses `GET /wishlist`, `POST/DELETE /wishlist/:houseId` (list is not path-scoped on the backend).
-- **FR-HOUSE-001..005**: `/finding-house` filters (city, type, min/max budget) via `GET /houses` and `GET /master-data/:entity`. Details at `/houses/:id` via `GET /houses/:id`. Booking via `POST /houses/:id/bookings` (guests redirected to sign-in). After success, moving upsell dialog: Yes → `/hire-moving?bookingId&houseId`; No stays on details.
+- **FR-HOUSE-001..005 (partial vs SRS v1.1)**: `/finding-house` filters (city, type, min/max budget) via `GET /houses` and `GET /master-data/:entity`. Details at `/houses/:id` via `GET /houses/:id`. Booking via `POST /houses/:id/bookings` (guests redirected to sign-in). After success, moving upsell **dialog** (not yet the dedicated confirmation page required by FR-HOUSE-005). SRS v1.1 (confirmation page, confirmed-on-submit, duplicate rule, agent notify/list/cancel, cancel-actor tracking, FR-ADMIN-007) is specified ahead of implementation.
 - **FR-AGENT-001**: Agent Register form matches §8.6 fields and posts to `POST /registrations/agent` (auth required; unauthenticated users redirected to sign-in). NRC photo fields accept path/file-name placeholders (no binary upload in this increment).
 
 ### Increment B implemented (moving, driver, roommates, profile, driver jobs)
@@ -838,6 +926,7 @@ The `frontend-app/` project is an independent Vite + React + TypeScript applicat
 - Driver assigned-job listing is not exposed by the backend; workspace focuses on available PENDING requests plus detail-by-id after accept. Gap: no `GET /driver/requests/assigned` (or equivalent) for post-accept job inbox.
 - **Intentional backend limitation (Increment C):** There is no admin list/queue endpoint for pending agents, pending drivers, users, or unassigned moving requests. Admin UX uses userId/requestId entry forms and reports overview counts instead of selectable queues. A future backend increment can add list endpoints without changing the action APIs already wired.
 - **Intentional gaps retained after Increment E:** no admin selectable list queues; no report export (PDF/Excel/CSV); email/SMS notification channels remain future scope; cloud object storage remains future scope.
+- **SRS v1.1 house booking workflow (specified, not yet implemented):** dedicated confirmation page; status Confirmed on submit; duplicate active-booking prevention; agent notification and booking list with booker details; user/agent cancel with cancelled-by tracking; dedicated admin house booking report (FR-ADMIN-007). Current app still uses PENDING on create and a moving upsell dialog.
 - No mock feature flags; UI adapts to real backend contracts.
 
 ### Implementation status

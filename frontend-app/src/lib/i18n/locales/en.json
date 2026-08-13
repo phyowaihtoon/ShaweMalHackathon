@@ -1,6 +1,6 @@
 {
   "common": {
-    "appName": "ShweMal",
+    "appName": "Shawe MaL",
     "language": "Language",
     "theme": "Theme",
     "light": "Light",
@@ -22,8 +22,9 @@
     "home": "Home",
     "aboutUs": "About Us",
     "agentRegister": "Agent Register",
-    "agentHouses": "My Listings",
-    "postHousingInformation": "Post Housing Information",
+    "agentHouses": "My House Listings",
+    "agentBookings": "House bookings",
+    "postHousingInformation": "Post House Information",
     "driverRegister": "Driver Register",
     "driverJobs": "Driver Jobs",
     "signUp": "Sign Up",
@@ -41,7 +42,7 @@
   "public": {
     "homeTitle": "Home",
     "aboutTitle": "About Us",
-    "aboutIntro": "ShweMal helps people rent houses, hire movers, and find roommates — with verified agents and drivers you can trust.",
+    "aboutIntro": "Shawe Mal helps people rent houses, hire movers, and find roommates — with verified agents and drivers you can trust.",
     "aboutPillarHousingTitle": "Housing discovery",
     "aboutPillarHousingBody": "Browse and book homes with clear fees, amenities, and location details from verified housing agents.",
     "aboutPillarMovingTitle": "Moving services",
@@ -88,7 +89,8 @@
       "users": "Users",
       "movingAssign": "Moving Assign",
       "masterData": "Master Data",
-      "reports": "Reports"
+      "reports": "Reports",
+      "bookingReport": "House bookings"
     },
     "dashboard": {
       "quickLinks": "Quick links"
@@ -242,10 +244,28 @@
         "housingHint": "Available {{available}} · Not available {{notAvailable}}",
         "movingHint": "Completed {{completed}} of {{total}}"
       }
+    },
+    "bookingReport": {
+      "title": "House booking report",
+      "subtitle": "All house booking records with booking date and status filters.",
+      "filtersDescription": "Filter by booking date range and status. Pending, confirmed, and cancelled records are included.",
+      "status": "Booking status",
+      "anyStatus": "Any status",
+      "loadError": "Could not load house booking report.",
+      "records": "{{count}} booking records",
+      "columns": {
+        "id": "Booking ID",
+        "date": "Booking date",
+        "status": "Status",
+        "house": "House",
+        "agent": "Agent",
+        "booker": "Booker",
+        "cancelledBy": "Cancelled by"
+      }
     }
   },
   "home": {
-    "heroTitle": "Find your next home with ShweMal",
+    "heroTitle": "Find your next home with Shawe Mal",
     "heroSubtitle": "Browse featured houses, verified agents, and partner moving services in one place.",
     "searchLabel": "Search houses by city",
     "searchPlaceholder": "Search by city...",
@@ -286,7 +306,7 @@
     "addWishlist": "Add to wishlist",
     "removeWishlist": "Remove from wishlist",
     "backToList": "Back to Finding House",
-    "details": "House details",
+    "details": "House Details",
     "noDescription": "No description provided.",
     "monthlyFeesLabel": "Monthly fees",
     "depositLabel": "Deposit",
@@ -296,18 +316,38 @@
     "contractType": "Contract type",
     "amenities": "Amenities",
     "nearbyPlaces": "Nearby places",
-    "houseRules": "House rules",
-    "agentDetails": "Agent details",
+    "streetAddress": "Street address",
+    "mapTitle": "Location map",
+    "mapExact": "Pin shows the house location provided by the agent.",
+    "mapApproximate": "Pin is approximate based on township or street search.",
+    "mapUnavailable": "Map could not resolve this address. You can still open it in OpenStreetMap.",
+    "openInOsm": "Open in OpenStreetMap",
+    "houseRules": "House Rules",
+    "agentDetails": "Agent Details",
     "contactPhone": "Contact phone",
     "bookNow": "Book house",
     "bookFailed": "Booking failed. Please try again.",
+    "cancelBooking": "Cancel Booking",
+    "cancelConfirm": "Cancel this house booking?",
+    "cancelDialogTitle": "Cancel this booking?",
+    "cancelDialogBody": "Your booking for “{{house}}” will be cancelled. You can book this house again later if it is still available.",
+    "keepBooking": "Keep booking",
+    "cancelFailed": "Could not cancel the booking.",
+    "confirmation": {
+      "title": "Booking confirmed",
+      "thankYou": "Thank you for your booking. The agent will contact you soon.",
+      "houseLabel": "House",
+      "statusLabel": "Status",
+      "movingOffer": "Would you like to hire a moving service for this house?",
+      "loadError": "Could not load booking confirmation."
+    },
     "filters": {
       "city": "City",
       "type": "Property type",
       "minBudget": "Minimum budget",
       "maxBudget": "Maximum budget",
       "any": "Any",
-      "apply": "Apply filters"
+      "apply": "Search"
     },
     "movingUpsell": {
       "title": "Hire a moving service?",
@@ -322,7 +362,7 @@
     "loadError": "Could not load notifications."
   },
   "agent": {
-    "subtitle": "Submit your agent profile for admin verification. Upload NRC photos (JPEG, PNG, or WebP).",
+    "subtitle": "Submit your agent profile for admin verification.",
     "nrc": "NRC",
     "nrcLength": "NRC must be exactly 15 characters",
     "nrcFrontPhotoPath": "NRC front photo",
@@ -340,13 +380,13 @@
     "submitSuccess": "Agent registration submitted. An admin will verify your account.",
     "submitFailed": "Agent registration failed. Please try again.",
     "houses": {
-      "title": "My housing listings",
-      "subtitle": "Create, edit, and manage the homes you post as a verified agent.",
+      "title": "My House Listings",
+      "subtitle": "Create, edit, and manage the houses you post as a verified agent.",
       "create": "Post a house",
-      "createTitle": "Post housing information",
-      "editTitle": "Edit housing information",
-      "formTitle": "Housing details",
-      "formSubtitle": "Required fields follow §8.3 Housing Information. Upload 1–5 house photos (JPEG, PNG, or WebP).",
+      "createTitle": "Post House Information",
+      "editTitle": "Edit House Information",
+      "formTitle": "House Information",
+      "formSubtitle": "Fill Required fields for House Information. Upload 1–5 house photos (JPEG, PNG, or WebP).",
       "roleRequired": "An agent role is required to manage housing listings. Register as an agent first.",
       "verificationRequired": "Posting, editing, or deleting houses requires admin verification. You can view this workspace, but mutations stay locked until an admin verifies your agent account.",
       "listError": "Could not load your housing listings.",
@@ -358,12 +398,20 @@
       "postChannel": "Post channel",
       "postChannelAgent": "Agent",
       "postChannelRoommate": "Roommate",
+      "contactInformation": "Contact Information",
+      "location": "Location",
+      "pinHint": "Click the map to drop an optional pin. Leave it empty to keep coordinates optional.",
+      "clearPin": "Clear pin",
+      "coordsPair": "Latitude and longitude must be provided together.",
+      "invalidLatitude": "Latitude must be between -90 and 90.",
+      "invalidLongitude": "Longitude must be between -180 and 180.",
+      "contractAndFee": "Contract & Fee",
       "edit": "Edit",
       "delete": "Delete",
       "deleteConfirm": "Delete this housing listing? This cannot be undone.",
       "deleteSuccess": "Housing listing deleted.",
       "deleteFailed": "Could not delete housing listing.",
-      "createSubmit": "Create listing",
+      "createSubmit": "Post House",
       "updateSubmit": "Save changes",
       "createFailed": "Could not create housing listing.",
       "updateFailed": "Could not update housing listing.",
@@ -381,6 +429,18 @@
         "description": "Description",
         "floorLevel": "Floor level"
       }
+    },
+    "bookings": {
+      "title": "House bookings",
+      "subtitle": "Bookings for houses you posted, including booker details.",
+      "loadError": "Could not load house bookings.",
+      "empty": "No bookings yet for your posted houses.",
+      "status": "Status",
+      "bookedAt": "Booked at",
+      "bookerDetails": "Booker details",
+      "cancelledBy": "Cancelled by {{actor}}",
+      "cancelConfirm": "Cancel this booking?",
+      "cancelFailed": "Could not cancel the booking."
     }
   },
   "moving": {
@@ -423,7 +483,7 @@
     }
   },
   "driver": {
-    "subtitle": "Submit your driver profile for admin verification. Upload required photos (JPEG, PNG, or WebP).",
+    "subtitle": "Submit your driver profile for admin verification.",
     "companyName": "Company name",
     "nrc": "NRC",
     "nrcLength": "NRC must be exactly 15 characters",

@@ -6,9 +6,11 @@ import type {
   AdminOverviewReport,
   AdminSafeUser,
   CreateUserInput,
+  HouseBookingReportFilters,
   UpdateRolesInput,
   VerificationAction,
 } from '../types'
+import type { HouseBooking } from '@/features/houses/types/booking'
 
 export type ReportPeriodFilters = {
   from?: string
@@ -19,6 +21,18 @@ function buildReportsQuery(filters: ReportPeriodFilters = {}): string {
   const params = new URLSearchParams()
   if (filters.from) params.set('from', filters.from)
   if (filters.to) params.set('to', filters.to)
+  const query = params.toString()
+  return query ? `?${query}` : ''
+}
+
+function buildBookingReportQuery(filters: HouseBookingReportFilters = {}): string {
+  const params = new URLSearchParams()
+  if (filters.from) params.set('from', filters.from)
+  if (filters.to) params.set('to', filters.to)
+  if (filters.status) params.set('status', filters.status)
+  if (filters.houseId) params.set('houseId', filters.houseId)
+  if (filters.agentId) params.set('agentId', filters.agentId)
+  if (filters.userId) params.set('userId', filters.userId)
   const query = params.toString()
   return query ? `?${query}` : ''
 }
@@ -69,5 +83,9 @@ export const adminApi = {
 
   getReportsOverview(filters: ReportPeriodFilters = {}) {
     return apiRequest<AdminOverviewReport>(`/admin/reports/overview${buildReportsQuery(filters)}`)
+  },
+
+  getHouseBookingReport(filters: HouseBookingReportFilters = {}) {
+    return apiRequest<{ items: HouseBooking[] }>(`/admin/reports/bookings${buildBookingReportQuery(filters)}`)
   },
 }

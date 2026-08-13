@@ -10,12 +10,14 @@ import {
   adminUpdateDriverVerificationController,
   adminUpdateUserRolesController
 } from '../../controllers/admin.controller';
+import { adminHouseBookingReportController } from '../../controllers/booking.controller';
 import { requireAdmin, requireAuth } from '../../middleware/auth.middleware';
 import { validateMiddleware } from '../../middleware/validate.middleware';
 import { asyncHandler } from '../../utils/async-handler';
 import {
   adminAssignMovingRequestValidator,
   adminCreateUserValidator,
+  adminHouseBookingReportValidator,
   adminRegistrationLookupValidator,
   adminUpdateRolesValidator,
   adminVerificationValidator
@@ -58,5 +60,11 @@ adminRouter.post(
   asyncHandler(adminAssignMovingRequestController)
 );
 adminRouter.get('/reports/overview', asyncHandler(adminReportsOverviewController));
+adminRouter.get(
+  '/reports/bookings',
+  adminHouseBookingReportValidator,
+  validateMiddleware,
+  asyncHandler(adminHouseBookingReportController)
+);
 
 export { adminRouter };

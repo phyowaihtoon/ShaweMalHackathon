@@ -238,16 +238,7 @@ export function HireMovingPage() {
             <Field label={t('moving.moveInDate')} error={errors.moveInDate?.message}>
               <Input type="date" {...register('moveInDate')} />
             </Field>
-            <Field label={t('moving.vehicleType')} error={errors.vehicleTypeId?.message}>
-              <select className={selectClassName} {...register('vehicleTypeId')}>
-                <option value="">{t('houses.filters.any')}</option>
-                {(vehiclesQuery.data?.items ?? []).map((vehicle) => (
-                  <option key={vehicle.id} value={vehicle.id}>
-                    {vehicle.name}
-                  </option>
-                ))}
-              </select>
-            </Field>
+            
             <Field label={t('moving.damageChecklist')} error={errors.damageChecklist?.message} className="sm:col-span-2">
               <textarea className={textareaClassName} {...register('damageChecklist')} />
             </Field>
@@ -274,23 +265,6 @@ export function HireMovingPage() {
               <p className="text-sm text-muted-foreground">{t('moving.inventoryHint')}</p>
             </div>
 
-            <Field
-              label={t('moving.totalInventoryItems')}
-              error={errors.totalInventoryItems?.message}
-              className="max-w-xs"
-            >
-              <input type="hidden" {...register('totalInventoryItems')} />
-              <Input
-                type="number"
-                min={0}
-                step={1}
-                disabled
-                readOnly
-                value={watch('totalInventoryItems')}
-                tabIndex={-1}
-              />
-            </Field>
-
             {catalogByCategory.map(({ category, items }) => (
               <div key={category} className="space-y-2 rounded-md border p-4">
                 <h3 className="font-medium">{t(`moving.categories.${category}`)}</h3>
@@ -314,6 +288,33 @@ export function HireMovingPage() {
               </div>
             ))}
           </section>
+
+          <Field
+            label={t('moving.totalInventoryItems')}
+            error={errors.totalInventoryItems?.message}
+            className="max-w-xs"
+          >
+            <input type="hidden" {...register('totalInventoryItems')} />
+            <Input
+              type="number"
+              min={0}
+              step={1}
+              disabled
+              readOnly
+              value={watch('totalInventoryItems')}
+              tabIndex={-1}
+            />
+          </Field>
+          <Field label={t('moving.vehicleType')} error={errors.vehicleTypeId?.message}>
+              <select className={selectClassName} {...register('vehicleTypeId')}>
+                <option value="">{t('houses.filters.any')}</option>
+                {(vehiclesQuery.data?.items ?? []).map((vehicle) => (
+                  <option key={vehicle.id} value={vehicle.id}>
+                    {vehicle.name}
+                  </option>
+                ))}
+              </select>
+            </Field>
 
           {formError ? <p className="text-sm text-destructive">{formError}</p> : null}
 

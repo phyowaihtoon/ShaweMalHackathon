@@ -68,7 +68,7 @@ describe('home page', () => {
       </Routes>,
     )
 
-    expect(await screen.findByRole('heading', { name: /find your next home with shwemal/i })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: /find your next home with shawe mal/i })).toBeInTheDocument()
     expect(await screen.findByText('Golden Condo')).toBeInTheDocument()
     expect(screen.getByText('Welcome to ShweMal')).toBeInTheDocument()
     expect(screen.getByText('Agent A')).toBeInTheDocument()

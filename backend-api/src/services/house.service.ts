@@ -12,12 +12,16 @@ interface ListHousesInput {
   pageSize: number;
 }
 
-interface CreateBookingInput {
-  userId: string;
-  houseId: string;
-}
-
 const toNumber = (value: Prisma.Decimal): number => Number(value);
+
+const toOptionalNumber = (value: Prisma.Decimal | number | null | undefined): number | null => {
+  if (value == null) {
+    return null;
+  }
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
 
 const HOUSE_LIST_INCLUDE = {
   images: {
@@ -154,7 +158,10 @@ const mapHouseDetails = (
   location: {
     city: house.city,
     state: house.state,
-    nearbyPlaces: house.nearbyPlaces
+    nearbyPlaces: house.nearbyPlaces,
+    streetAddress: house.streetAddress,
+    latitude: toOptionalNumber(house.latitude),
+    longitude: toOptionalNumber(house.longitude)
   },
   propertyType: house.propertyType,
   contractType: house.contractType,
@@ -245,43 +252,6 @@ export const getHouseDetails = async (houseId: string) => {
   }
 
   return mapHouseDetails(house);
-};
-
-export const createBooking = async (input: CreateBookingInput) => {
-  const house = await prisma.house.findUnique({
-    where: { id: input.houseId },
-    select: {
-      id: true,
-      title: true,
-      availability: true
-    }
-  });
-
-  if (!house) {
-    throw new ApiError(404, 'HOUSE_NOT_FOUND', 'House not found.');
-  }
-
-  if (house.availability !== HouseAvailabilityStatus.AVAILABLE) {
-    throw new ApiError(400, 'HOUSE_NOT_AVAILABLE', 'House is not available for booking.');
-  }
-
-  const booking = await prisma.booking.create({
-    data: {
-      userId: input.userId,
-      houseId: input.houseId,
-      status: 'PENDING'
-    }
-  });
-
-  await prisma.notification.create({
-    data: {
-      userId: input.userId,
-      title: 'Booking Confirmation',
-      message: `Your booking request for "${house.title}" has been submitted.`
-    }
-  });
-
-  return booking;
 };
 
 export const parsePostChannel = (value: unknown): HousePostChannel | undefined => {

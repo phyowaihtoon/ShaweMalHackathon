@@ -3,6 +3,7 @@ import { Router } from 'express';
 import {
   createAgentHouseController,
   deleteAgentHouseController,
+  listAgentBookingsController,
   listAgentHousesController,
   updateAgentHouseController,
   upsertAgentProfileController
@@ -23,6 +24,7 @@ agentRouter.use(requireAuth, requireRole(['agent']));
 agentRouter.post('/profile', agentProfileUpsertValidator, validateMiddleware, asyncHandler(upsertAgentProfileController));
 agentRouter.post('/houses', agentHouseCreateValidator, validateMiddleware, asyncHandler(createAgentHouseController));
 agentRouter.get('/houses', asyncHandler(listAgentHousesController));
+agentRouter.get('/bookings', asyncHandler(listAgentBookingsController));
 agentRouter.patch('/houses/:id', agentHouseUpdateValidator, validateMiddleware, asyncHandler(updateAgentHouseController));
 agentRouter.delete('/houses/:id', agentHouseIdParamValidator, validateMiddleware, asyncHandler(deleteAgentHouseController));
 

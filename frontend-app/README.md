@@ -71,14 +71,14 @@ Provider order: Theme → I18n → Query → Auth → Router.
 | --- | --- | --- |
 | Public auth UX | FR-AUTH-001..003, FR-PROFILE-004 | Remember Me, role-aware redirects, header profile/notifications + logout |
 | Home | FR-HOME-001..005 | `GET /home`, global search → Finding House, sections + wishlist hearts |
-| Finding House | FR-HOUSE-001..005 | Filters via `GET /houses` + master data, details, booking, moving upsell |
+| Finding House | FR-HOUSE-001..008 | Filters via `GET /houses` + master data, details, booking, confirmation page, user cancel |
 | Agent Register | FR-AGENT-001 | Auth-gated form → `POST /registrations/agent` (path placeholders for NRC photos) |
 
 ### Increment B
 
 | Area | Requirement IDs | Notes |
 | --- | --- | --- |
-| Hire Moving | FR-MOVE-001..002, FR-HOUSE-005 | Auth-gated form §8.4 → `POST /moving/requests`; detail via `GET /moving/requests/:id`; booking upsell query context preserved |
+| Hire Moving | FR-MOVE-001..002, FR-HOUSE-005 | Auth-gated form §8.4 → `POST /moving/requests`; detail via `GET /moving/requests/:id`; booking confirmation Yes → `/hire-moving?bookingId&houseId` |
 | Driver Register | FR-DRIVER-001 | `/driver-register` → `POST /registrations/driver` (path placeholders) |
 | Roommates | FR-ROOM-001..002 | Browse `GET /roommates` with filters; auth post `POST /roommates` |
 | Profile module | FR-PROFILE-001..003, FR-NOTI-001 UI | `/profile`, wishlist, history; `GET/PATCH /profile`, change-password; reviews `POST /reviews`; notifications mark-read kept |
@@ -95,12 +95,14 @@ Provider order: Theme → I18n → Query → Auth → Router.
 | Moving assign | FR-MOVE-005 | `POST /admin/moving/requests/:id/assign` with requestId + driverUserId |
 | Master data CRUD | FR-ADMIN-005, MD-001..011 | Reusable entity pages for all `/admin/master-data/:entity` entities; DELETE soft-deactivates |
 | Reports | FR-ADMIN-006 | From/to filters + overview sections (housing, bookings, moving, top performers) |
+| House booking report | FR-ADMIN-007 | `/admin/reports/bookings` lists all booking records with date and status filters |
 
 ### Increment D
 
 | Area | Requirement IDs | Notes |
 | --- | --- | --- |
 | Agent housing CRUD | FR-AGENT-002..003 | `/agent/houses` list/create/edit/delete against `/agent/houses` APIs; public sub-header **Post Housing Information** + UserMenu link for `agent` role; unverified agents see a clear verification banner and mutations stay disabled |
+| Agent house bookings | FR-AGENT-004 | `/agent/bookings` lists bookings on own houses with booker details and cancel |
 
 ### Increment E
 
@@ -114,7 +116,8 @@ See repo root `FileUploadSpecification.md`.
 
 - `/` Home
 - `/finding-house` House search/filters
-- `/houses/:id` House details + booking
+- `/houses/:id` House details + booking / cancel
+- `/houses/:id/bookings/:bookingId/confirmation` Booking confirmation + hire moving offer
 - `/hire-moving` Moving request form (auth; accepts `bookingId` / `houseId`)
 - `/hire-moving/:id` Moving request detail
 - `/finding-roommates` Roommate browse + post
@@ -122,6 +125,7 @@ See repo root `FileUploadSpecification.md`.
 - `/agent/houses` Agent own listings (agent role)
 - `/agent/houses/new` Create housing listing
 - `/agent/houses/:id/edit` Edit housing listing
+- `/agent/bookings` Bookings on the agent's posted houses
 - `/driver-register` Driver registration (requires sign-in)
 - `/profile` Account edit, password, reviews
 - `/profile/wishlist` Wishlist houses
@@ -136,6 +140,7 @@ See repo root `FileUploadSpecification.md`.
 - `/admin/master-data` Master-data entity index
 - `/admin/master-data/:entity` Master-data CRUD workspace
 - `/admin/reports` Period-filtered reports overview
+- `/admin/reports/bookings` House booking report
 
 ## Environment
 

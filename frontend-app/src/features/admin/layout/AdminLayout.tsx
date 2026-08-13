@@ -14,6 +14,7 @@ const navItems = [
   { to: '/admin/moving-assign', labelKey: 'admin.nav.movingAssign' },
   { to: '/admin/master-data', labelKey: 'admin.nav.masterData' },
   { to: '/admin/reports', labelKey: 'admin.nav.reports' },
+  { to: '/admin/reports/bookings', labelKey: 'admin.nav.bookingReport' },
 ] as const
 
 export function AdminLayout() {

@@ -56,7 +56,7 @@ export function AdminDashboardPage() {
             </CardHeader>
             <CardContent className="flex flex-wrap gap-2">
               <Button asChild variant="secondary">
-                <Link to="/admin/verifications">{t('admin.nav.verifications')}</Link>
+                <Link to="/admin/reports/bookings">{t('admin.nav.bookingReport')}</Link>
               </Button>
               <Button asChild variant="secondary">
                 <Link to="/admin/users">{t('admin.nav.users')}</Link>

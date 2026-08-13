@@ -8,6 +8,7 @@ import {
   updateAgentHouse,
   upsertAgentProfile
 } from '../services/agent.service';
+import { listAgentBookings } from '../services/booking.service';
 import { ApiError } from '../utils/api-error';
 import { sendSuccess } from '../utils/api-response';
 
@@ -35,6 +36,14 @@ const parseAvailability = (value: string): HouseAvailabilityStatus => {
   return HouseAvailabilityStatus.AVAILABLE;
 };
 
+const parseOptionalCoordinate = (value: unknown): number | null => {
+  if (value === undefined || value === null || String(value).trim() === '') {
+    return null;
+  }
+
+  return Number(value);
+};
+
 const mapHousePayload = (body: Request['body']) => ({
   title: String(body.title),
   description: body.description ? String(body.description) : undefined,
@@ -53,6 +62,9 @@ const mapHousePayload = (body: Request['body']) => ({
   contactPhoneNumber: String(body.contactPhoneNumber),
   cityId: String(body.cityId),
   stateId: String(body.stateId),
+  streetAddress: body.streetAddress ? String(body.streetAddress) : undefined,
+  latitude: parseOptionalCoordinate(body.latitude),
+  longitude: parseOptionalCoordinate(body.longitude),
   nearbyPlaces: body.nearbyPlaces ? String(body.nearbyPlaces) : undefined,
   availability: parseAvailability(String(body.availability)),
   imagePaths: Array.isArray(body.imagePaths) ? body.imagePaths.map((item: unknown) => String(item)) : [],
@@ -94,6 +106,13 @@ export const listAgentHousesController = async (req: Request, res: Response): Pr
   const items = await listAgentHouses(userId);
 
   sendSuccess(res, 200, 'Agent houses fetched successfully', { items });
+};
+
+export const listAgentBookingsController = async (req: Request, res: Response): Promise<void> => {
+  const userId = requireActor(req);
+  const items = await listAgentBookings(userId);
+
+  sendSuccess(res, 200, 'Agent house bookings fetched successfully', { items });
 };
 
 export const updateAgentHouseController = async (req: Request, res: Response): Promise<void> => {

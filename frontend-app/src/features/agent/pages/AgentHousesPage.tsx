@@ -74,19 +74,24 @@ export function AgentHousesPage() {
           <h1 className="text-3xl font-semibold tracking-tight">{t('agent.houses.title')}</h1>
           <p className="text-sm text-muted-foreground">{t('agent.houses.subtitle')}</p>
         </div>
-        {verified ? (
-          <Button asChild>
-            <Link to="/agent/houses/new">
+        <div className="flex flex-wrap gap-2">
+          <Button asChild variant="outline">
+            <Link to="/agent/bookings">{t('nav.agentBookings')}</Link>
+          </Button>
+          {verified ? (
+            <Button asChild>
+              <Link to="/agent/houses/new">
+                <Plus className="size-4" />
+                {t('agent.houses.create')}
+              </Link>
+            </Button>
+          ) : (
+            <Button type="button" disabled>
               <Plus className="size-4" />
               {t('agent.houses.create')}
-            </Link>
-          </Button>
-        ) : (
-          <Button type="button" disabled>
-            <Plus className="size-4" />
-            {t('agent.houses.create')}
-          </Button>
-        )}
+            </Button>
+          )}
+        </div>
       </div>
 
       {!verified ? (

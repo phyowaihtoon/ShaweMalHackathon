@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 
-import { createBooking, getHouseDetails, listHouses } from '../services/house.service';
+import { createBooking } from '../services/booking.service';
+import { getHouseDetails, listHouses } from '../services/house.service';
 import { ApiError } from '../utils/api-error';
 import { sendSuccess } from '../utils/api-response';
 

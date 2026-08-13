@@ -98,7 +98,7 @@ describe('agent post housing sub-header', () => {
     const subNav = screen.getByRole('navigation', { name: /sub/i })
     const postLink = subNav.querySelector('a[href="/agent/houses"]')
     expect(postLink).not.toBeNull()
-    expect(postLink).toHaveTextContent(/post housing information/i)
+    expect(postLink).toHaveTextContent(/post house information/i)
   })
 
   it('hides Post Housing Information in sub-header for non-agent users', async () => {
@@ -108,6 +108,6 @@ describe('agent post housing sub-header', () => {
     await screen.findByRole('button', { name: /alice user/i })
     const subNav = screen.getByRole('navigation', { name: /sub/i })
     expect(subNav.querySelector('a[href="/agent/houses"]')).toBeNull()
-    expect(screen.queryByRole('link', { name: /post housing information/i })).toBeNull()
+    expect(screen.queryByRole('link', { name: /post house information/i })).toBeNull()
   })
 })

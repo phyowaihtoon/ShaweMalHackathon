@@ -28,6 +28,12 @@ enum BookingStatus {
   CANCELLED
 }
 
+enum CancelledByRole {
+  USER
+  AGENT
+  ADMIN
+}
+
 enum MovingRequestStatus {
   PENDING
   ACCEPTED
@@ -76,6 +82,7 @@ model User {
   driverProfile      DriverProfile?
   houses             House[]            @relation("HouseOwner")
   bookings           Booking[]
+  cancelledBookings  Booking[]          @relation("BookingCancelledBy")
   wishlists          Wishlist[]
   movingRequests     MovingRequest[]    @relation("MovingRequester")
   assignedMovingRequests MovingRequest[] @relation("MovingAssignedDriver")
@@ -424,6 +431,9 @@ model House {
   contactPhoneNumber String
   cityId             String
   stateId            String
+  streetAddress      String?
+  latitude           Decimal?                @db.Decimal(10, 7)
+  longitude          Decimal?                @db.Decimal(10, 7)
   nearbyPlaces       String?
   availability       HouseAvailabilityStatus @default(AVAILABLE)
   createdAt          DateTime                @default(now())
@@ -514,18 +524,23 @@ model HouseAmenity {
 }
 
 model Booking {
-  id        String       @id @default(cuid())
-  userId    String
-  houseId   String
-  status    BookingStatus @default(PENDING)
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
-  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  house     House        @relation(fields: [houseId], references: [id], onDelete: Cascade)
+  id                 String           @id @default(cuid())
+  userId             String
+  houseId            String
+  status             BookingStatus    @default(CONFIRMED)
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  cancelledAt        DateTime?
+  cancelledByUserId  String?
+  cancelledByRole    CancelledByRole?
+  user               User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cancelledByUser    User?            @relation("BookingCancelledBy", fields: [cancelledByUserId], references: [id], onDelete: SetNull)
+  house              House            @relation(fields: [houseId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([houseId])
   @@index([status])
+  @@index([cancelledByUserId])
 }
 
 model Wishlist {

@@ -13,6 +13,7 @@ const guestTopLinks = [
   { to: '/', labelKey: 'nav.home', end: true },
   { to: '/about-us', labelKey: 'nav.aboutUs' },
   { to: '/agent-register', labelKey: 'nav.agentRegister' },
+  { to: '/driver-register', labelKey: 'nav.driverRegister' },
   { to: '/sign-up', labelKey: 'nav.signUp' },
   { to: '/sign-in', labelKey: 'nav.signIn' },
 ] as const
@@ -21,6 +22,7 @@ const authTopLinks = [
   { to: '/', labelKey: 'nav.home', end: true },
   { to: '/about-us', labelKey: 'nav.aboutUs' },
   { to: '/agent-register', labelKey: 'nav.agentRegister' },
+  { to: '/driver-register', labelKey: 'nav.driverRegister' },
 ] as const
 
 const publicSubLinks = [
@@ -29,7 +31,12 @@ const publicSubLinks = [
   { to: '/finding-roommates', labelKey: 'nav.findingRoommates' },
 ] as const
 
-const agentSubLink = { to: '/agent/houses', labelKey: 'nav.postHousingInformation' } as const
+const agentSubLinks = [
+  { to: '/finding-house', labelKey: 'nav.findingHouse' },
+  { to: '/agent/houses', labelKey: 'nav.postHousingInformation' },
+  { to: '/hire-moving', labelKey: 'nav.hireMoving' },
+  { to: '/finding-roommates', labelKey: 'nav.findingRoommates' },  
+] as const
 
 function NavItem({ to, label, end }: { to: string; label: string; end?: boolean }) {
   return (
@@ -53,7 +60,7 @@ export function PublicLayout() {
   const { isAuthenticated, isBootstrapping, user } = useAuth()
   const topLinks = isAuthenticated ? authTopLinks : guestTopLinks
   const isAgent = Boolean(user?.roles?.includes('agent'))
-  const subLinks = isAgent ? [...publicSubLinks, agentSubLink] : [...publicSubLinks]
+  const subLinks = isAgent ? [...agentSubLinks] : [...publicSubLinks]
 
   return (
     <div className="min-h-screen bg-background">

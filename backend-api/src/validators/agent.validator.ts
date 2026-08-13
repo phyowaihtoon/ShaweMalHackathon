@@ -44,6 +44,37 @@ export const agentHouseCreateValidator = [
   body('contactPhoneNumber').trim().notEmpty().withMessage('contactPhoneNumber is required.'),
   body('cityId').trim().notEmpty().withMessage('cityId is required.'),
   body('stateId').trim().notEmpty().withMessage('stateId is required.'),
+  body('streetAddress').optional({ values: 'falsy' }).isString().withMessage('streetAddress must be a string.'),
+  body('latitude').custom((value) => {
+    if (value === undefined || value === null || String(value).trim() === '') {
+      return true;
+    }
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed) || parsed < -90 || parsed > 90) {
+      throw new Error('latitude must be a number between -90 and 90.');
+    }
+    return true;
+  }),
+  body('longitude').custom((value) => {
+    if (value === undefined || value === null || String(value).trim() === '') {
+      return true;
+    }
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed) || parsed < -180 || parsed > 180) {
+      throw new Error('longitude must be a number between -180 and 180.');
+    }
+    return true;
+  }),
+  body().custom((_, { req }) => {
+    const latitude = req.body.latitude;
+    const longitude = req.body.longitude;
+    const hasLatitude = latitude !== undefined && latitude !== null && String(latitude).trim() !== '';
+    const hasLongitude = longitude !== undefined && longitude !== null && String(longitude).trim() !== '';
+    if (hasLatitude !== hasLongitude) {
+      throw new Error('latitude and longitude must be provided together.');
+    }
+    return true;
+  }),
   body('nearbyPlaces').optional().isString().withMessage('nearbyPlaces must be a string.'),
   body('availability').isIn(availabilityValues).withMessage('availability must be available or not_available.'),
   body('imagePaths').isArray({ min: 1, max: 5 }).withMessage('imagePaths must be an array with 1 to 5 entries.'),

@@ -48,7 +48,9 @@ describe('public routing', () => {
       </Routes>,
     )
 
-    expect(await screen.findByRole('heading', { name: /find your next home with shawe mal/i })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('heading', { name: /myanmar.?s all-in-one relocation platform/i }),
+    ).toBeInTheDocument()
 
     await user.click(screen.getByRole('link', { name: /about us/i }))
     expect(await screen.findByRole('heading', { name: /about us/i })).toBeInTheDocument()

@@ -17,6 +17,7 @@ interface MockUser {
   verificationStatus: 'PENDING' | 'VERIFIED' | 'REJECTED';
   isActive: boolean;
   userRoles: Array<{ role: MockRole }>;
+  driverProfile?: { verificationStatus: 'PENDING' | 'VERIFIED' | 'REJECTED' } | null;
 }
 
 interface MockVehicleType {
@@ -141,7 +142,10 @@ const getUserByRole = (name: string) => {
 
 const cloneUser = (user: MockUser): MockUser => ({
   ...user,
-  userRoles: user.userRoles.map((entry) => ({ role: { ...entry.role } }))
+  userRoles: user.userRoles.map((entry) => ({ role: { ...entry.role } })),
+  driverProfile: user.userRoles.some((entry) => entry.role.name === 'driver')
+    ? { verificationStatus: user.verificationStatus }
+    : null
 });
 
 const hydrateMovingRequest = (movingRequest: MockMovingRequest) => {
@@ -247,7 +251,7 @@ jest.mock('../../src/prisma/client', () => {
         const activeUsers = Array.from(users.values()).filter((user) => user.isActive);
 
         if (
-          where?.verificationStatus === 'VERIFIED' &&
+          where?.driverProfile?.is?.verificationStatus === 'VERIFIED' &&
           where?.userRoles?.some?.role?.name === 'driver'
         ) {
           return getUserByRole('driver')

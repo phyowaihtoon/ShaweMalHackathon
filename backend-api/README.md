@@ -80,7 +80,7 @@ Ensure `uploads/{houses,moving,docs,profile}` exist (created on boot). Binaries 
 | Reviews | `GET/POST /reviews` (POST upserts by `bookingId` or `movingRequestId`) |
 | Notifications | `GET /notifications`, `PATCH /notifications/:id/read` |
 | Public master data | `GET /master-data/:entity` |
-| Admin | users, verification, moving assignment, overview reports, `GET /admin/reports/bookings` |
+| Admin | users, agent/driver verification queues (`GET /admin/agents`, `GET /admin/drivers`), moving assignment, overview reports, `GET /admin/reports/bookings` |
 | Admin master data | CRUD `/admin/master-data/:entity` including `roles` |
 
 ## Requirement mapping (backend)

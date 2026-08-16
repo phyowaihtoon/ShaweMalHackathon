@@ -1007,12 +1007,12 @@ The `frontend-app/` project is an independent Vite + React + TypeScript applicat
 - **FR-DRIVER-003..006**: Driver-role users get `/driver/jobs` against `GET /driver/requests/available`, accept/reject, and job detail actions for ETA (`POST .../eta`) and status (`POST .../status` with sequential `driver_coming|driver_arrived|loading|on_the_way|unloading|completed|cancelled`). Job detail also uses `GET /moving/requests/:id` for full FR-DRIVER-005 fields.
 
 ### Increment C implemented (admin portal)
-- **FR-ADMIN-001..002**: `/admin/verifications` provides agent and driver verification forms (`PATCH /admin/agents/:userId/verification`, `PATCH /admin/drivers/:userId/verification`) with status actions `pending|approve|reject`. Pending/verified/rejected counts are surfaced from `GET /admin/reports/overview`.
+- **FR-ADMIN-001..002**: Separate queues at `/admin/verifications/agents` and `/admin/verifications/drivers` list pending (default) registrations (`GET /admin/agents`, `GET /admin/drivers`) with search and status filters. Detail pages review profile fields and documents (`GET /admin/agents/:userId`, `GET /admin/drivers/:userId`) then approve or reject (`PATCH .../verification` with optional `rejectionReason`). Verification status lives on `AgentProfile` / `DriverProfile`. Applicants receive an in-app notification. `/admin/verifications` redirects to the agent queue. Pending/verified/rejected counts remain on `GET /admin/reports/overview`.
 - **FR-ADMIN-003..004**: `/admin/users` supports create-user (`POST /admin/users`) and role assignment (`PATCH /admin/users/:id/roles`) for `normal|agent|driver|admin`.
 - **FR-MOVE-005 / admin assign**: `/admin/moving-assign` posts `POST /admin/moving/requests/:id/assign` with `driverUserId`.
 - **FR-ADMIN-005 / MD-001..012**: `/admin/master-data` indexes all entities; `/admin/master-data/:entity` provides list/create/edit and DELETE soft-deactivate against `/admin/master-data/*`.
 - **FR-ADMIN-006**: `/admin/dashboard` summary cards and `/admin/reports` period filters (`from`/`to`) consume `GET /admin/reports/overview` (registrations, verification, housing, bookings, moving, top performers).
-- Admin layout nav: Dashboard, Verifications, Users, Moving Assign, Master Data, Reports. `AdminAuthGuard` continues to require `admin` role.
+- Admin layout nav: Dashboard, Agent verification, Driver verification, Users, Moving Assign, Master Data, Reports. `AdminAuthGuard` continues to require `admin` role.
 
 ### Increment D implemented (agent housing CRUD + polish)
 - **FR-AGENT-002..003**: Agent-role public sub-header link **Post Housing Information** and UserMenu link to `/agent/houses`. List own houses via `GET /agent/houses`. Create/edit forms cover §8.3 fields aligned with `agentHouseCreateValidator` (`POST/PATCH /agent/houses`, `DELETE /agent/houses/:id`). Master-data dropdowns: property-types, cities, states, contract-types, floor-levels, amenities. Image fields initially used path strings (binary upload added in Increment E). Unverified agents see a clear banner; create/edit/delete stay disabled while backend enforces `AGENT_NOT_VERIFIED`.
@@ -1024,7 +1024,7 @@ The `frontend-app/` project is an independent Vite + React + TypeScript applicat
 - Domain validators require `uploads/{category}/...` path format.
 - Frontend file pickers wired for: agent house images, hire-moving cargo photos, profile picture, agent NRC docs, driver registration docs/vehicle/profile photos.
 - Display: house cards/details, moving request detail, driver job cargo photos, profile/roommate avatars resolve public upload URLs.
-- Admin verifications: `GET /admin/agents/:userId` and `GET /admin/drivers/:userId` load registration docs; protected docs preview via gated file API.
+- Admin verifications: queues at `/admin/verifications/agents` and `/admin/verifications/drivers`; detail pages load docs via `GET /admin/agents/:userId` and `GET /admin/drivers/:userId`; protected docs preview via gated file API.
 - Spec: `FileUploadSpecification.md` / `.html`.
 
 ### Intentional choices / deferred

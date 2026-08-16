@@ -9,7 +9,7 @@ import {
   revokeAllUserSessions,
   revokeRefreshSession
 } from './session.service';
-import { createUserWithDefaultRole, getUserByEmail, getUserById, updateUserPassword } from './user.service';
+import { createUserWithDefaultRole, getUserByEmail, getUserById, toSafeUser, updateUserPassword } from './user.service';
 
 interface RegisterInput {
   name: string;
@@ -27,22 +27,6 @@ interface LoginInput {
 const hasPrismaDuplicateError = (error: unknown): error is { code: string } => {
   return typeof error === 'object' && error !== null && 'code' in error && (error as { code?: unknown }).code === 'P2002';
 };
-
-const toSafeUser = (user: {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  verificationStatus: string;
-  userRoles: Array<{ role: { name: string } }>;
-}) => ({
-  id: user.id,
-  name: user.name,
-  email: user.email,
-  phone: user.phone,
-  verificationStatus: user.verificationStatus,
-  roles: user.userRoles.map((item) => item.role.name)
-});
 
 export const register = async (input: RegisterInput) => {
   const existing = await getUserByEmail(input.email);

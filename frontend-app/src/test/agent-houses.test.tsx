@@ -36,7 +36,7 @@ describe('agent houses list', () => {
                   name: 'Agent Ada',
                   email: 'ada@example.com',
                   roles: ['agent'],
-                  verificationStatus: 'VERIFIED',
+                  agentVerificationStatus: 'VERIFIED',
                 },
               },
             }),

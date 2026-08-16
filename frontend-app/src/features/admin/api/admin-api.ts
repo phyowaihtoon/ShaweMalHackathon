@@ -1,14 +1,18 @@
 import { apiRequest } from '@/lib/api/client'
 
 import type {
+  AdminAgentQueueItem,
   AdminAgentRegistration,
+  AdminDriverQueueItem,
   AdminDriverRegistration,
   AdminOverviewReport,
   AdminSafeUser,
   CreateUserInput,
   HouseBookingReportFilters,
+  PaginatedVerificationList,
   UpdateRolesInput,
   VerificationAction,
+  VerificationQueueFilters,
 } from '../types'
 import type { HouseBooking } from '@/features/houses/types/booking'
 
@@ -37,6 +41,15 @@ function buildBookingReportQuery(filters: HouseBookingReportFilters = {}): strin
   return query ? `?${query}` : ''
 }
 
+function buildVerificationQueueQuery(filters: VerificationQueueFilters = {}): string {
+  const params = new URLSearchParams()
+  params.set('status', filters.status ?? 'PENDING')
+  if (filters.q) params.set('q', filters.q)
+  if (typeof filters.page === 'number') params.set('page', String(filters.page))
+  if (typeof filters.pageSize === 'number') params.set('pageSize', String(filters.pageSize))
+  return `?${params.toString()}`
+}
+
 export const adminApi = {
   createUser(input: CreateUserInput) {
     return apiRequest<{ user: AdminSafeUser }>('/admin/users', {
@@ -52,10 +65,22 @@ export const adminApi = {
     })
   },
 
-  updateAgentVerification(userId: string, status: VerificationAction) {
+  listAgentRegistrations(filters: VerificationQueueFilters = {}) {
+    return apiRequest<PaginatedVerificationList<AdminAgentQueueItem>>(
+      `/admin/agents${buildVerificationQueueQuery(filters)}`,
+    )
+  },
+
+  listDriverRegistrations(filters: VerificationQueueFilters = {}) {
+    return apiRequest<PaginatedVerificationList<AdminDriverQueueItem>>(
+      `/admin/drivers${buildVerificationQueueQuery(filters)}`,
+    )
+  },
+
+  updateAgentVerification(userId: string, status: VerificationAction, rejectionReason?: string) {
     return apiRequest<{ user: AdminSafeUser }>(`/admin/agents/${userId}/verification`, {
       method: 'PATCH',
-      body: { status },
+      body: { status, rejectionReason: rejectionReason || undefined },
     })
   },
 
@@ -63,10 +88,10 @@ export const adminApi = {
     return apiRequest<AdminAgentRegistration>(`/admin/agents/${userId}`)
   },
 
-  updateDriverVerification(userId: string, status: VerificationAction) {
+  updateDriverVerification(userId: string, status: VerificationAction, rejectionReason?: string) {
     return apiRequest<{ user: AdminSafeUser }>(`/admin/drivers/${userId}/verification`, {
       method: 'PATCH',
-      body: { status },
+      body: { status, rejectionReason: rejectionReason || undefined },
     })
   },
 

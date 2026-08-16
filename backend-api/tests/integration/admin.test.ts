@@ -14,8 +14,52 @@ interface MockUser {
   email: string;
   phone: string;
   passwordHash: string;
-  verificationStatus: 'PENDING' | 'VERIFIED' | 'REJECTED';
   userRoles: Array<{ role: MockRole }>;
+}
+
+interface MockAgentProfile {
+  id: string;
+  userId: string;
+  name: string;
+  nrc: string;
+  nrcFrontPhotoPath: string;
+  nrcBackPhotoPath: string;
+  email: string;
+  phone: string;
+  telegram: string | null;
+  viber: string | null;
+  address1: string;
+  address2: string | null;
+  cityId: string;
+  stateId: string;
+  serviceRegionId: string;
+  hasRentingExperience: boolean;
+  verificationStatus: 'PENDING' | 'VERIFIED' | 'REJECTED';
+  rejectionReason: string | null;
+  reviewedAt: Date | null;
+  createdAt: Date;
+}
+
+interface MockDriverProfile {
+  id: string;
+  userId: string;
+  name: string;
+  companyName: string | null;
+  nrc: string;
+  nrcFrontPhotoPath: string;
+  nrcBackPhotoPath: string;
+  drivingLicensePhotoPath: string;
+  profilePhotoPath: string;
+  phone: string;
+  currentAddress: string;
+  vehicleTypeId: string;
+  vehicleLicensePlateNumber: string;
+  vehiclePhotoPath: string;
+  wheelTaxPhotoPath: string;
+  verificationStatus: 'PENDING' | 'VERIFIED' | 'REJECTED';
+  rejectionReason: string | null;
+  reviewedAt: Date | null;
+  createdAt: Date;
 }
 
 interface PropertyTypeRecord {
@@ -32,13 +76,64 @@ const roles = new Map<string, MockRole>([
   ['admin', { id: 'role-admin', name: 'admin' }]
 ]);
 const users = new Map<string, MockUser>();
+const agentProfiles = new Map<string, MockAgentProfile>();
+const driverProfiles = new Map<string, MockDriverProfile>();
 const propertyTypes = new Map<string, PropertyTypeRecord>();
 const auditEntries: Array<{ action: string; targetId?: string }> = [];
+const notifications: Array<{ userId: string; title: string; message: string }> = [];
 
-const cloneUser = (user: MockUser): MockUser => ({
-  ...user,
-  userRoles: user.userRoles.map((entry) => ({ role: { ...entry.role } }))
-});
+const namedCity = { id: 'city-1', name: 'Yangon' };
+const namedState = { id: 'state-1', name: 'Yangon Region' };
+const namedRegion = { id: 'region-1', name: 'Downtown' };
+const namedVehicle = { id: 'vt-1', name: 'Light Truck' };
+
+const cloneUser = (user: MockUser) => {
+  const agent = agentProfiles.get(user.id);
+  const driver = driverProfiles.get(user.id);
+
+  return {
+    ...user,
+    userRoles: user.userRoles.map((entry) => ({ role: { ...entry.role } })),
+    agentProfile: agent
+      ? {
+          ...agent,
+          city: namedCity,
+          state: namedState,
+          serviceRegion: namedRegion
+        }
+      : null,
+    driverProfile: driver
+      ? {
+          ...driver,
+          vehicleType: namedVehicle
+        }
+      : null
+  };
+};
+
+const matchesQuery = (value: string, q?: string) => {
+  if (!q) {
+    return true;
+  }
+
+  return value.toLowerCase().includes(q.toLowerCase());
+};
+
+const extractContains = (orFilters?: Array<Record<string, unknown>>): string | undefined => {
+  if (!orFilters) {
+    return undefined;
+  }
+
+  for (const filter of orFilters) {
+    for (const value of Object.values(filter)) {
+      if (value && typeof value === 'object' && 'contains' in value) {
+        return String((value as { contains: string }).contains);
+      }
+    }
+  }
+
+  return undefined;
+};
 
 jest.mock('../../src/prisma/client', () => {
   const prisma: any = {
@@ -77,7 +172,6 @@ jest.mock('../../src/prisma/client', () => {
             email: data.email,
             phone: data.phone,
             passwordHash: data.passwordHash,
-            verificationStatus: 'PENDING',
             userRoles: createdRoles
           };
 
@@ -85,17 +179,12 @@ jest.mock('../../src/prisma/client', () => {
           return cloneUser(created);
         }
       ),
-      update: jest.fn(async ({ where, data }: { where: { id: string }; data: { verificationStatus?: 'PENDING' | 'VERIFIED' | 'REJECTED' } }) => {
+      update: jest.fn(async ({ where }: { where: { id: string } }) => {
         const found = users.get(where.id);
         if (!found) {
           throw new Error('User not found');
         }
 
-        if (data.verificationStatus) {
-          found.verificationStatus = data.verificationStatus;
-        }
-
-        users.set(found.id, found);
         return cloneUser(found);
       })
     },
@@ -141,6 +230,141 @@ jest.mock('../../src/prisma/client', () => {
       create: jest.fn(async ({ data }: { data: { action: string; targetId?: string } }) => {
         auditEntries.push({ action: data.action, targetId: data.targetId });
         return { id: `audit-${auditEntries.length}` };
+      })
+    },
+    notification: {
+      create: jest.fn(async ({ data }: { data: { userId: string; title: string; message: string } }) => {
+        notifications.push(data);
+        return { id: `notification-${notifications.length}`, ...data };
+      })
+    },
+    agentProfile: {
+      findUnique: jest.fn(async ({ where }: { where: { userId: string } }) => agentProfiles.get(where.userId) ?? null),
+      update: jest.fn(
+        async ({
+          where,
+          data
+        }: {
+          where: { userId: string };
+          data: {
+            verificationStatus: 'PENDING' | 'VERIFIED' | 'REJECTED';
+            rejectionReason: string | null;
+            reviewedAt: Date | null;
+          };
+        }) => {
+          const found = agentProfiles.get(where.userId);
+          if (!found) {
+            throw new Error('Agent profile not found');
+          }
+
+          const updated = { ...found, ...data };
+          agentProfiles.set(where.userId, updated);
+          return updated;
+        }
+      ),
+      findMany: jest.fn(
+        async ({
+          where,
+          skip = 0,
+          take
+        }: {
+          where?: {
+            verificationStatus?: 'PENDING' | 'VERIFIED' | 'REJECTED';
+            OR?: Array<Record<string, unknown>>;
+          };
+          skip?: number;
+          take?: number;
+        }) => {
+          let items = Array.from(agentProfiles.values());
+          if (where?.verificationStatus) {
+            items = items.filter((item) => item.verificationStatus === where.verificationStatus);
+          }
+
+          const q = typeof where?.OR?.[0] === 'object' ? extractContains(where.OR) : undefined;
+          if (q) {
+            items = items.filter((item) => {
+              const user = users.get(item.userId);
+              return (
+                matchesQuery(item.name, q) ||
+                matchesQuery(item.nrc, q) ||
+                matchesQuery(item.email, q) ||
+                matchesQuery(item.phone, q) ||
+                matchesQuery(user?.name ?? '', q) ||
+                matchesQuery(user?.email ?? '', q) ||
+                matchesQuery(user?.phone ?? '', q)
+              );
+            });
+          }
+
+          return items.slice(skip, typeof take === 'number' ? skip + take : undefined).map((profile) => ({
+            ...profile,
+            user: users.get(profile.userId),
+            city: namedCity,
+            state: namedState,
+            serviceRegion: namedRegion
+          }));
+        }
+      ),
+      count: jest.fn(async ({ where }: { where?: { verificationStatus?: 'PENDING' | 'VERIFIED' | 'REJECTED' } }) => {
+        let items = Array.from(agentProfiles.values());
+        if (where?.verificationStatus) {
+          items = items.filter((item) => item.verificationStatus === where.verificationStatus);
+        }
+        return items.length;
+      })
+    },
+    driverProfile: {
+      findUnique: jest.fn(async ({ where }: { where: { userId: string } }) => driverProfiles.get(where.userId) ?? null),
+      update: jest.fn(
+        async ({
+          where,
+          data
+        }: {
+          where: { userId: string };
+          data: {
+            verificationStatus: 'PENDING' | 'VERIFIED' | 'REJECTED';
+            rejectionReason: string | null;
+            reviewedAt: Date | null;
+          };
+        }) => {
+          const found = driverProfiles.get(where.userId);
+          if (!found) {
+            throw new Error('Driver profile not found');
+          }
+
+          const updated = { ...found, ...data };
+          driverProfiles.set(where.userId, updated);
+          return updated;
+        }
+      ),
+      findMany: jest.fn(
+        async ({
+          where,
+          skip = 0,
+          take
+        }: {
+          where?: { verificationStatus?: 'PENDING' | 'VERIFIED' | 'REJECTED' };
+          skip?: number;
+          take?: number;
+        }) => {
+          let items = Array.from(driverProfiles.values());
+          if (where?.verificationStatus) {
+            items = items.filter((item) => item.verificationStatus === where.verificationStatus);
+          }
+
+          return items.slice(skip, typeof take === 'number' ? skip + take : undefined).map((profile) => ({
+            ...profile,
+            user: users.get(profile.userId),
+            vehicleType: namedVehicle
+          }));
+        }
+      ),
+      count: jest.fn(async ({ where }: { where?: { verificationStatus?: 'PENDING' | 'VERIFIED' | 'REJECTED' } }) => {
+        let items = Array.from(driverProfiles.values());
+        if (where?.verificationStatus) {
+          items = items.filter((item) => item.verificationStatus === where.verificationStatus);
+        }
+        return items.length;
       })
     },
     propertyType: {
@@ -189,7 +413,6 @@ jest.mock('../../src/prisma/client', () => {
     amenity: { findMany: jest.fn(), findUnique: jest.fn(), create: jest.fn(), update: jest.fn() },
     statusCode: { findMany: jest.fn(), findUnique: jest.fn(), create: jest.fn(), update: jest.fn() },
     movingInventoryItemType: { findMany: jest.fn(), findUnique: jest.fn(), create: jest.fn(), update: jest.fn() },
-    notification: { create: jest.fn() },
     refreshSession: { create: jest.fn(), findUnique: jest.fn(), update: jest.fn(), updateMany: jest.fn() },
     $transaction: jest.fn(async (callback: (tx: unknown) => Promise<unknown>): Promise<unknown> => callback(prisma))
   };
@@ -206,8 +429,11 @@ const seedUser = (input: MockUser) => {
 describe('Admin endpoints', () => {
   beforeEach(() => {
     users.clear();
+    agentProfiles.clear();
+    driverProfiles.clear();
     propertyTypes.clear();
     auditEntries.length = 0;
+    notifications.length = 0;
 
     seedUser({
       id: 'agent-user',
@@ -215,8 +441,29 @@ describe('Admin endpoints', () => {
       email: 'agent@example.com',
       phone: '0910000001',
       passwordHash: 'x',
-      verificationStatus: 'PENDING',
       userRoles: [{ role: { id: 'role-agent', name: 'agent' } }]
+    });
+    agentProfiles.set('agent-user', {
+      id: 'agent-profile-1',
+      userId: 'agent-user',
+      name: 'Agent User',
+      nrc: '12/YGN(N)123456',
+      nrcFrontPhotoPath: 'uploads/docs/nrc-front.jpg',
+      nrcBackPhotoPath: 'uploads/docs/nrc-back.jpg',
+      email: 'agent@example.com',
+      phone: '0910000001',
+      telegram: null,
+      viber: null,
+      address1: 'Street 1',
+      address2: null,
+      cityId: 'city-1',
+      stateId: 'state-1',
+      serviceRegionId: 'region-1',
+      hasRentingExperience: true,
+      verificationStatus: 'PENDING',
+      rejectionReason: null,
+      reviewedAt: null,
+      createdAt: new Date('2026-08-01T00:00:00.000Z')
     });
 
     seedUser({
@@ -225,8 +472,83 @@ describe('Admin endpoints', () => {
       email: 'driver@example.com',
       phone: '0910000002',
       passwordHash: 'x',
-      verificationStatus: 'PENDING',
       userRoles: [{ role: { id: 'role-driver', name: 'driver' } }]
+    });
+    driverProfiles.set('driver-user', {
+      id: 'driver-profile-1',
+      userId: 'driver-user',
+      name: 'Driver User',
+      companyName: null,
+      nrc: '12/YGN(N)654321',
+      nrcFrontPhotoPath: 'uploads/docs/d-nrc-front.jpg',
+      nrcBackPhotoPath: 'uploads/docs/d-nrc-back.jpg',
+      drivingLicensePhotoPath: 'uploads/docs/license.jpg',
+      profilePhotoPath: 'uploads/profile/driver.jpg',
+      phone: '0910000002',
+      currentAddress: 'Yangon',
+      vehicleTypeId: 'vt-1',
+      vehicleLicensePlateNumber: 'YGN-1234',
+      vehiclePhotoPath: 'uploads/docs/vehicle.jpg',
+      wheelTaxPhotoPath: 'uploads/docs/wheeltax.jpg',
+      verificationStatus: 'PENDING',
+      rejectionReason: null,
+      reviewedAt: null,
+      createdAt: new Date('2026-08-02T00:00:00.000Z')
+    });
+
+    seedUser({
+      id: 'dual-user',
+      name: 'Dual User',
+      email: 'dual@example.com',
+      phone: '0910000003',
+      passwordHash: 'x',
+      userRoles: [
+        { role: { id: 'role-agent', name: 'agent' } },
+        { role: { id: 'role-driver', name: 'driver' } }
+      ]
+    });
+    agentProfiles.set('dual-user', {
+      id: 'agent-profile-dual',
+      userId: 'dual-user',
+      name: 'Dual User',
+      nrc: '12/YGN(N)111111',
+      nrcFrontPhotoPath: 'uploads/docs/dual-nrc-front.jpg',
+      nrcBackPhotoPath: 'uploads/docs/dual-nrc-back.jpg',
+      email: 'dual@example.com',
+      phone: '0910000003',
+      telegram: null,
+      viber: null,
+      address1: 'Street 2',
+      address2: null,
+      cityId: 'city-1',
+      stateId: 'state-1',
+      serviceRegionId: 'region-1',
+      hasRentingExperience: false,
+      verificationStatus: 'PENDING',
+      rejectionReason: null,
+      reviewedAt: null,
+      createdAt: new Date('2026-08-03T00:00:00.000Z')
+    });
+    driverProfiles.set('dual-user', {
+      id: 'driver-profile-dual',
+      userId: 'dual-user',
+      name: 'Dual User',
+      companyName: 'Dual Co',
+      nrc: '12/YGN(N)111111',
+      nrcFrontPhotoPath: 'uploads/docs/dual-nrc-front.jpg',
+      nrcBackPhotoPath: 'uploads/docs/dual-nrc-back.jpg',
+      drivingLicensePhotoPath: 'uploads/docs/dual-license.jpg',
+      profilePhotoPath: 'uploads/profile/dual.jpg',
+      phone: '0910000003',
+      currentAddress: 'Yangon',
+      vehicleTypeId: 'vt-1',
+      vehicleLicensePlateNumber: 'YGN-9999',
+      vehiclePhotoPath: 'uploads/docs/dual-vehicle.jpg',
+      wheelTaxPhotoPath: 'uploads/docs/dual-wheeltax.jpg',
+      verificationStatus: 'PENDING',
+      rejectionReason: null,
+      reviewedAt: null,
+      createdAt: new Date('2026-08-03T00:00:00.000Z')
     });
   });
 
@@ -254,23 +576,54 @@ describe('Admin endpoints', () => {
     expect(roleResponse.body.data.user.roles).toEqual(expect.arrayContaining(['normal', 'agent']));
   });
 
-  it('updates agent and driver verification', async () => {
+  it('lists pending agent registrations without requiring a user id (FR-ADMIN-001)', async () => {
+    const response = await request(app).get('/api/v1/admin/agents').set('Authorization', `Bearer ${adminToken}`);
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          userId: 'agent-user',
+          nrc: '12/YGN(N)123456',
+          verificationStatus: 'PENDING',
+          city: namedCity
+        })
+      ])
+    );
+  });
+
+  it('updates agent and driver verification independently and notifies on reject (FR-ADMIN-001, FR-ADMIN-002)', async () => {
     const agentResponse = await request(app)
       .patch('/api/v1/admin/agents/agent-user/verification')
       .set('Authorization', `Bearer ${adminToken}`)
       .send({ status: 'approve' });
 
     expect(agentResponse.status).toBe(200);
-    expect(agentResponse.body.data.user.verificationStatus).toBe('VERIFIED');
+    expect(agentResponse.body.data.user.agentVerificationStatus).toBe('VERIFIED');
+    expect(agentResponse.body.data.user.driverVerificationStatus).toBeNull();
 
     const driverResponse = await request(app)
       .patch('/api/v1/admin/drivers/driver-user/verification')
       .set('Authorization', `Bearer ${adminToken}`)
-      .send({ status: 'reject' });
+      .send({ status: 'reject', rejectionReason: 'Unreadable license photo' });
 
     expect(driverResponse.status).toBe(200);
-    expect(driverResponse.body.data.user.verificationStatus).toBe('REJECTED');
+    expect(driverResponse.body.data.user.driverVerificationStatus).toBe('REJECTED');
     expect(auditEntries.length).toBeGreaterThanOrEqual(2);
+    expect(notifications.some((item) => item.userId === 'driver-user' && item.message.includes('Unreadable license photo'))).toBe(
+      true
+    );
+  });
+
+  it('approves agent verification without changing driver status on a dual-role user (FR-ADMIN-001, FR-ADMIN-002)', async () => {
+    const response = await request(app)
+      .patch('/api/v1/admin/agents/dual-user/verification')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ status: 'approve' });
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.user.agentVerificationStatus).toBe('VERIFIED');
+    expect(response.body.data.user.driverVerificationStatus).toBe('PENDING');
   });
 
   it('supports property-types CRUD and validation failure', async () => {

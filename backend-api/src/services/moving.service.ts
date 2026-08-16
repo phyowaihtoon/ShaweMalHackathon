@@ -269,6 +269,11 @@ const ensureDriverVerified = async (driverUserId: string): Promise<void> => {
         include: {
           role: true
         }
+      },
+      driverProfile: {
+        select: {
+          verificationStatus: true
+        }
       }
     }
   });
@@ -282,7 +287,7 @@ const ensureDriverVerified = async (driverUserId: string): Promise<void> => {
     throw new ApiError(403, 'DRIVER_ROLE_REQUIRED', 'Driver role is required.');
   }
 
-  if (user.verificationStatus !== 'VERIFIED') {
+  if (user.driverProfile?.verificationStatus !== 'VERIFIED') {
     throw new ApiError(403, 'DRIVER_NOT_VERIFIED', 'Driver must be verified to perform this action.');
   }
 };
@@ -314,12 +319,16 @@ const notifyVerifiedDriversForNewRequest = async (movingRequestId: string) => {
   const verifiedDrivers = await prisma.user.findMany({
     where: {
       isActive: true,
-      verificationStatus: 'VERIFIED',
       userRoles: {
         some: {
           role: {
             name: 'driver'
           }
+        }
+      },
+      driverProfile: {
+        is: {
+          verificationStatus: 'VERIFIED'
         }
       }
     },

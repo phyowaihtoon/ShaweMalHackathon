@@ -2,13 +2,21 @@ export type AdminRole = 'normal' | 'agent' | 'driver' | 'admin'
 
 export type VerificationAction = 'pending' | 'approve' | 'reject'
 
+export type VerificationStatusValue = 'PENDING' | 'VERIFIED' | 'REJECTED'
+
 export type AdminSafeUser = {
   id: string
   name: string
   email: string
   phone: string
-  verificationStatus: string
   roles: string[]
+  agentVerificationStatus: string | null
+  driverVerificationStatus: string | null
+}
+
+export type NamedRef = {
+  id: string
+  name: string
 }
 
 export type AdminAgentRegistration = {
@@ -21,12 +29,21 @@ export type AdminAgentRegistration = {
     nrcBackPhotoPath: string
     email: string
     phone: string
+    telegram?: string | null
+    viber?: string | null
     address1: string
     address2?: string | null
     cityId: string
     stateId: string
     serviceRegionId: string
+    city?: NamedRef | null
+    state?: NamedRef | null
+    serviceRegion?: NamedRef | null
     hasRentingExperience: boolean
+    verificationStatus: VerificationStatusValue
+    rejectionReason?: string | null
+    reviewedAt?: string | null
+    submittedAt?: string
   }
 }
 
@@ -44,10 +61,57 @@ export type AdminDriverRegistration = {
     phone: string
     currentAddress: string
     vehicleTypeId: string
+    vehicleType?: NamedRef | null
     vehicleLicensePlateNumber: string
     vehiclePhotoPath: string
     wheelTaxPhotoPath: string
+    verificationStatus: VerificationStatusValue
+    rejectionReason?: string | null
+    reviewedAt?: string | null
+    submittedAt?: string
   }
+}
+
+export type AdminAgentQueueItem = {
+  userId: string
+  name: string
+  email: string
+  phone: string
+  nrc: string
+  city: NamedRef
+  state: NamedRef
+  serviceRegion: NamedRef
+  hasRentingExperience: boolean
+  submittedAt: string
+  verificationStatus: VerificationStatusValue
+}
+
+export type AdminDriverQueueItem = {
+  userId: string
+  name: string
+  email: string
+  phone: string
+  nrc: string
+  companyName?: string | null
+  vehicleType: NamedRef
+  vehicleLicensePlateNumber: string
+  submittedAt: string
+  verificationStatus: VerificationStatusValue
+}
+
+export type PaginatedVerificationList<T> = {
+  items: T[]
+  page: number
+  pageSize: number
+  total: number
+  totalPages: number
+}
+
+export type VerificationQueueFilters = {
+  status?: VerificationStatusValue | 'all'
+  q?: string
+  page?: number
+  pageSize?: number
 }
 
 export type VerificationCounts = {

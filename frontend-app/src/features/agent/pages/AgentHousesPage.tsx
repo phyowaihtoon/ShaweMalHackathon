@@ -11,7 +11,7 @@ import { ApiRequestError } from '@/lib/api/client'
 
 import { agentHousesApi } from '../api/agent-houses-api'
 
-function isVerifiedAgent(status: string | undefined): boolean {
+function isVerifiedAgent(status: string | null | undefined): boolean {
   return (status ?? '').toUpperCase() === 'VERIFIED'
 }
 
@@ -25,7 +25,7 @@ export function AgentHousesPage() {
   const [actionSuccess, setActionSuccess] = useState<string | null>(null)
 
   const isAgent = Boolean(user?.roles?.includes('agent'))
-  const verified = isVerifiedAgent(user?.verificationStatus)
+  const verified = isVerifiedAgent(user?.agentVerificationStatus)
 
   useEffect(() => {
     if (!isBootstrapping && !isAuthenticated) {

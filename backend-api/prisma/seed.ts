@@ -465,7 +465,6 @@ const seedAdminUser = async (): Promise<void> => {
         name,
         phone,
         passwordHash,
-        verificationStatus: 'VERIFIED',
         isActive: true
       }
     });
@@ -480,7 +479,6 @@ const seedAdminUser = async (): Promise<void> => {
       email,
       phone,
       passwordHash,
-      verificationStatus: 'VERIFIED',
       isActive: true,
       userRoles: {
         create: {

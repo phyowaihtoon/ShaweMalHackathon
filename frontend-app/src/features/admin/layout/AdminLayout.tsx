@@ -9,7 +9,8 @@ import { cn } from '@/lib/utils'
 
 const navItems = [
   { to: '/admin/dashboard', labelKey: 'admin.nav.dashboard' },
-  { to: '/admin/verifications', labelKey: 'admin.nav.verifications' },
+  { to: '/admin/verifications/agents', labelKey: 'admin.nav.agentVerification' },
+  { to: '/admin/verifications/drivers', labelKey: 'admin.nav.driverVerification' },
   { to: '/admin/users', labelKey: 'admin.nav.users' },
   { to: '/admin/moving-assign', labelKey: 'admin.nav.movingAssign' },
   { to: '/admin/master-data', labelKey: 'admin.nav.masterData' },
@@ -23,7 +24,7 @@ export function AdminLayout() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b">
+      <header className="border-b bg-secondary text-secondary-foreground">
         <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-3">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>

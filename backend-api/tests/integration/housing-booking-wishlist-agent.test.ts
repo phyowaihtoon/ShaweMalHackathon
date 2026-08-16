@@ -152,7 +152,9 @@ const hydrateHouse = (house: MockHouse) => {
       name: agent?.name ?? 'Unknown Agent',
       email: agent?.email ?? 'unknown@example.com',
       phone: agent?.phone ?? '0000000',
-      verificationStatus: agent?.verificationStatus ?? 'PENDING'
+      agentProfile: {
+        verificationStatus: agent?.verificationStatus ?? 'PENDING'
+      }
     }
   };
 };
@@ -259,7 +261,13 @@ jest.mock('../../src/prisma/client', () => {
 
         return {
           ...user,
-          userRoles: user.userRoles.map((item) => ({ role: { ...item.role } }))
+          userRoles: user.userRoles.map((item) => ({ role: { ...item.role } })),
+          agentProfile: user.userRoles.some((item) => item.role.name === 'agent')
+            ? { verificationStatus: user.verificationStatus }
+            : null,
+          driverProfile: user.userRoles.some((item) => item.role.name === 'driver')
+            ? { verificationStatus: user.verificationStatus }
+            : null
         };
       })
     },

@@ -4,7 +4,8 @@ export type AuthUser = {
   email: string
   phone?: string | null
   roles: string[]
-  verificationStatus?: string
+  agentVerificationStatus?: string | null
+  driverVerificationStatus?: string | null
   isActive?: boolean
 }
 

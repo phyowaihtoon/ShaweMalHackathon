@@ -1,6 +1,7 @@
 import { prisma } from '../prisma/client';
 import { ApiError } from '../utils/api-error';
 import { toMyReview } from './review.service';
+import { toSafeUser } from './user.service';
 
 interface UpdateProfileInput {
   name?: string;
@@ -8,34 +9,42 @@ interface UpdateProfileInput {
   profilePicturePath?: string | null;
 }
 
+const PROFILE_USER_INCLUDE = {
+  userRoles: {
+    include: {
+      role: true
+    }
+  },
+  agentProfile: {
+    select: {
+      verificationStatus: true
+    }
+  },
+  driverProfile: {
+    select: {
+      verificationStatus: true
+    }
+  }
+} as const;
+
 const toSafeProfile = (user: {
   id: string;
   name: string;
   email: string;
   phone: string;
   profilePicturePath: string | null;
-  verificationStatus: string;
   userRoles: Array<{ role: { name: string } }>;
+  agentProfile?: { verificationStatus: string } | null;
+  driverProfile?: { verificationStatus: string } | null;
 }) => ({
-  id: user.id,
-  name: user.name,
-  email: user.email,
-  phone: user.phone,
-  profilePicturePath: user.profilePicturePath,
-  verificationStatus: user.verificationStatus,
-  roles: user.userRoles.map((item) => item.role.name)
+  ...toSafeUser(user),
+  profilePicturePath: user.profilePicturePath
 });
 
 export const getMyProfile = async (userId: string) => {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    include: {
-      userRoles: {
-        include: {
-          role: true
-        }
-      }
-    }
+    include: PROFILE_USER_INCLUDE
   });
 
   if (!user) {
@@ -69,13 +78,7 @@ export const updateMyProfile = async (userId: string, input: UpdateProfileInput)
       id: userId
     },
     data,
-    include: {
-      userRoles: {
-        include: {
-          role: true
-        }
-      }
-    }
+    include: PROFILE_USER_INCLUDE
   });
 
   return toSafeProfile(user);

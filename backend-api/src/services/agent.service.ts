@@ -125,6 +125,11 @@ const assertVerifiedAgent = async (userId: string) => {
         include: {
           role: true
         }
+      },
+      agentProfile: {
+        select: {
+          verificationStatus: true
+        }
       }
     }
   });
@@ -138,7 +143,7 @@ const assertVerifiedAgent = async (userId: string) => {
     throw new ApiError(403, 'AGENT_ROLE_REQUIRED', 'Agent role is required.');
   }
 
-  if (user.verificationStatus !== 'VERIFIED') {
+  if (user.agentProfile?.verificationStatus !== 'VERIFIED') {
     throw new ApiError(403, 'AGENT_NOT_VERIFIED', 'Only verified agents can manage houses.');
   }
 };

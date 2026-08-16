@@ -46,6 +46,16 @@ export const getValidRefreshSessionByToken = async (refreshToken: string) => {
             include: {
               role: true
             }
+          },
+          agentProfile: {
+            select: {
+              verificationStatus: true
+            }
+          },
+          driverProfile: {
+            select: {
+              verificationStatus: true
+            }
           }
         }
       }

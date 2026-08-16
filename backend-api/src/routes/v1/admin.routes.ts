@@ -5,6 +5,8 @@ import {
   adminCreateUserController,
   adminGetAgentRegistrationController,
   adminGetDriverRegistrationController,
+  adminListAgentRegistrationsController,
+  adminListDriverRegistrationsController,
   adminReportsOverviewController,
   adminUpdateAgentVerificationController,
   adminUpdateDriverVerificationController,
@@ -20,6 +22,7 @@ import {
   adminHouseBookingReportValidator,
   adminRegistrationLookupValidator,
   adminUpdateRolesValidator,
+  adminVerificationListValidator,
   adminVerificationValidator
 } from '../../validators/admin.validator';
 
@@ -29,6 +32,12 @@ adminRouter.use(requireAuth, requireAdmin);
 
 adminRouter.post('/users', adminCreateUserValidator, validateMiddleware, asyncHandler(adminCreateUserController));
 adminRouter.patch('/users/:id/roles', adminUpdateRolesValidator, validateMiddleware, asyncHandler(adminUpdateUserRolesController));
+adminRouter.get(
+  '/agents',
+  adminVerificationListValidator,
+  validateMiddleware,
+  asyncHandler(adminListAgentRegistrationsController)
+);
 adminRouter.get(
   '/agents/:userId',
   adminRegistrationLookupValidator,
@@ -40,6 +49,12 @@ adminRouter.patch(
   adminVerificationValidator,
   validateMiddleware,
   asyncHandler(adminUpdateAgentVerificationController)
+);
+adminRouter.get(
+  '/drivers',
+  adminVerificationListValidator,
+  validateMiddleware,
+  asyncHandler(adminListDriverRegistrationsController)
 );
 adminRouter.get(
   '/drivers/:userId',

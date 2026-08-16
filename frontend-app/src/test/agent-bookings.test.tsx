@@ -38,7 +38,7 @@ describe('agent bookings page (FR-AGENT-004)', () => {
                 name: 'Agent Ada',
                 email: 'ada@example.com',
                 roles: ['agent'],
-                verificationStatus: 'VERIFIED',
+                agentVerificationStatus: 'VERIFIED',
               },
             },
           }),

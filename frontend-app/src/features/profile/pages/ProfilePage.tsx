@@ -158,10 +158,18 @@ export function ProfilePage() {
             <span className="font-medium">{t('profile.roles')}: </span>
             {profile.roles.join(', ') || '—'}
           </p>
-          <p>
-            <span className="font-medium">{t('profile.verification')}: </span>
-            {profile.verificationStatus ?? '—'}
-          </p>
+          {profile.roles.includes('agent') ? (
+            <p>
+              <span className="font-medium">{t('profile.agentVerification')}: </span>
+              {profile.agentVerificationStatus ?? '—'}
+            </p>
+          ) : null}
+          {profile.roles.includes('driver') ? (
+            <p>
+              <span className="font-medium">{t('profile.driverVerification')}: </span>
+              {profile.driverVerificationStatus ?? '—'}
+            </p>
+          ) : null}
         </CardContent>
       </Card>
 

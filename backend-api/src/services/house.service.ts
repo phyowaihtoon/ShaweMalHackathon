@@ -113,7 +113,11 @@ const HOUSE_DETAIL_INCLUDE = {
       name: true,
       email: true,
       phone: true,
-      verificationStatus: true
+      agentProfile: {
+        select: {
+          verificationStatus: true
+        }
+      }
     }
   }
 } as const;
@@ -173,7 +177,7 @@ const mapHouseDetails = (
     name: house.agent.name,
     phone: house.agent.phone,
     email: house.agent.email,
-    verificationStatus: house.agent.verificationStatus
+    verificationStatus: house.agent.agentProfile?.verificationStatus ?? 'PENDING'
   },
   createdAt: house.createdAt,
   updatedAt: house.updatedAt

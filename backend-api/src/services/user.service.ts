@@ -29,8 +29,38 @@ const USER_WITH_ROLES_INCLUDE = {
     include: {
       role: true
     }
+  },
+  agentProfile: {
+    select: {
+      verificationStatus: true
+    }
+  },
+  driverProfile: {
+    select: {
+      verificationStatus: true
+    }
   }
 } as const;
+
+export type UserWithRoles = {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  userRoles: Array<{ role: { name: string } }>;
+  agentProfile?: { verificationStatus: string } | null;
+  driverProfile?: { verificationStatus: string } | null;
+};
+
+export const toSafeUser = (user: UserWithRoles) => ({
+  id: user.id,
+  name: user.name,
+  email: user.email,
+  phone: user.phone,
+  roles: user.userRoles.map((item) => item.role.name),
+  agentVerificationStatus: user.agentProfile?.verificationStatus ?? null,
+  driverVerificationStatus: user.driverProfile?.verificationStatus ?? null
+});
 
 export const getUserByEmail = async (email: string) => {
   return prisma.user.findUnique({
@@ -78,7 +108,6 @@ export const createUserWithDefaultRole = async (input: CreateUserInput) => {
         email: input.email,
         phone: input.phone,
         passwordHash: input.passwordHash,
-        verificationStatus: 'PENDING',
         userRoles: {
           create: roles.map((role) => ({ roleId: role.id }))
         }
@@ -138,19 +167,6 @@ export const replaceUserRoles = async (userId: string, roleNames: string[]) => {
       data: {},
       include: USER_WITH_ROLES_INCLUDE
     });
-  });
-};
-
-export const updateUserVerificationStatus = async (
-  userId: string,
-  verificationStatus: 'PENDING' | 'VERIFIED' | 'REJECTED'
-) => {
-  return prisma.user.update({
-    where: { id: userId },
-    data: {
-      verificationStatus
-    },
-    include: USER_WITH_ROLES_INCLUDE
   });
 };
 

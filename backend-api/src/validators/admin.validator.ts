@@ -26,7 +26,23 @@ export const adminUpdateRolesValidator = [
 
 export const adminVerificationValidator = [
   ...userIdParamValidator,
-  body('status').isIn(verificationActions).withMessage('Status must be pending, approve, or reject.')
+  body('status').isIn(verificationActions).withMessage('Status must be pending, approve, or reject.'),
+  body('rejectionReason')
+    .optional({ values: 'null' })
+    .isString()
+    .withMessage('rejectionReason must be a string.')
+    .isLength({ max: 500 })
+    .withMessage('rejectionReason must be at most 500 characters.')
+];
+
+export const adminVerificationListValidator = [
+  query('status')
+    .optional()
+    .isIn(['PENDING', 'VERIFIED', 'REJECTED', 'all', 'pending', 'verified', 'rejected', 'ALL'])
+    .withMessage('status must be PENDING, VERIFIED, REJECTED, or all.'),
+  query('q').optional().trim().isLength({ max: 100 }).withMessage('q must be at most 100 characters.'),
+  query('page').optional().isInt({ min: 1 }).withMessage('page must be a positive integer.'),
+  query('pageSize').optional().isInt({ min: 1, max: 50 }).withMessage('pageSize must be between 1 and 50.')
 ];
 
 export const adminRegistrationLookupValidator = [...userIdParamValidator];

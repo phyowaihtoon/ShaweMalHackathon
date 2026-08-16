@@ -133,7 +133,13 @@ const authHeader = (userId: string, rolesList: string[]) => {
 
 const cloneUser = (user: MockUser) => ({
   ...user,
-  userRoles: user.userRoles.map((entry) => ({ role: { ...entry.role } }))
+  userRoles: user.userRoles.map((entry) => ({ role: { ...entry.role } })),
+  agentProfile: user.userRoles.some((entry) => entry.role.name === 'agent')
+    ? { verificationStatus: user.verificationStatus }
+    : null,
+  driverProfile: user.userRoles.some((entry) => entry.role.name === 'driver')
+    ? { verificationStatus: user.verificationStatus }
+    : null
 });
 
 const hydrateRoommatePost = (item: MockRoommatePost) => {
@@ -237,19 +243,32 @@ jest.mock('../../src/prisma/client', () => {
 
         return items.map((item) => cloneUser(item));
       }),
-      groupBy: jest.fn(async ({ where }: { where?: any }) => {
-        let items = Array.from(users.values());
-
-        const roleName = where?.userRoles?.some?.role?.name;
-        if (roleName) {
-          items = items.filter((item) => item.userRoles.some((entry) => entry.role.name === roleName));
-        }
-
+      groupBy: jest.fn(async () => [])
+    },
+    agentProfile: {
+      groupBy: jest.fn(async () => {
+        const items = Array.from(users.values()).filter((item) =>
+          item.userRoles.some((entry) => entry.role.name === 'agent')
+        );
         const grouped = new Map<string, number>();
         for (const item of items) {
           grouped.set(item.verificationStatus, (grouped.get(item.verificationStatus) ?? 0) + 1);
         }
-
+        return Array.from(grouped.entries()).map(([verificationStatus, count]) => ({
+          verificationStatus,
+          _count: { _all: count }
+        }));
+      })
+    },
+    driverProfile: {
+      groupBy: jest.fn(async () => {
+        const items = Array.from(users.values()).filter((item) =>
+          item.userRoles.some((entry) => entry.role.name === 'driver')
+        );
+        const grouped = new Map<string, number>();
+        for (const item of items) {
+          grouped.set(item.verificationStatus, (grouped.get(item.verificationStatus) ?? 0) + 1);
+        }
         return Array.from(grouped.entries()).map(([verificationStatus, count]) => ({
           verificationStatus,
           _count: { _all: count }

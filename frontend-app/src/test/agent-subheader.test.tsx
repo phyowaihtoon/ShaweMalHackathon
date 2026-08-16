@@ -29,7 +29,7 @@ function stubAuthFetch(roles: string[]) {
                 name: 'Alice User',
                 email: 'alice@example.com',
                 roles,
-                verificationStatus: roles.includes('agent') ? 'VERIFIED' : undefined,
+                agentVerificationStatus: roles.includes('agent') ? 'VERIFIED' : null,
               },
             },
           }),

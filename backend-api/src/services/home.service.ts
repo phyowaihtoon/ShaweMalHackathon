@@ -12,7 +12,6 @@ export const getHomePageContent = async () => {
     prisma.user.findMany({
       where: {
         isActive: true,
-        verificationStatus: 'VERIFIED',
         userRoles: {
           some: {
             role: {
@@ -21,16 +20,18 @@ export const getHomePageContent = async () => {
           }
         },
         agentProfile: {
-          isNot: null
+          is: {
+            verificationStatus: 'VERIFIED'
+          }
         }
       },
       select: {
         id: true,
         name: true,
         phone: true,
-        verificationStatus: true,
         agentProfile: {
           select: {
+            verificationStatus: true,
             city: {
               select: {
                 id: true,
@@ -117,7 +118,6 @@ export const getHomePageContent = async () => {
   const verifiedDrivers = await prisma.user.findMany({
     where: {
       isActive: true,
-      verificationStatus: 'VERIFIED',
       userRoles: {
         some: {
           role: {
@@ -126,7 +126,9 @@ export const getHomePageContent = async () => {
         }
       },
       driverProfile: {
-        isNot: null
+        is: {
+          verificationStatus: 'VERIFIED'
+        }
       }
     },
     select: {
@@ -160,7 +162,18 @@ export const getHomePageContent = async () => {
       city: house.city,
       thumbnail: house.images[0]?.imagePath ?? null
     })),
-    verifiedAgents,
+    verifiedAgents: verifiedAgents.map((agent) => ({
+      id: agent.id,
+      name: agent.name,
+      phone: agent.phone,
+      verificationStatus: agent.agentProfile?.verificationStatus ?? 'PENDING',
+      agentProfile: agent.agentProfile
+        ? {
+            city: agent.agentProfile.city,
+            serviceRegion: agent.agentProfile.serviceRegion
+          }
+        : null
+    })),
     partnerMovingServices: verifiedDrivers,
     serviceReviews,
     newsUpdates: [

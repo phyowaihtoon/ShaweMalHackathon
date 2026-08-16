@@ -28,13 +28,6 @@ export const registerAgent = async (userId: string, input: AgentProfileInput) =>
 
   await addUserRole(userId, 'agent');
 
-  await prisma.user.update({
-    where: { id: userId },
-    data: {
-      verificationStatus: 'PENDING'
-    }
-  });
-
   const profile = await upsertAgentProfile(userId, input);
   await notifyRegistrationSubmitted(userId, 'Agent');
 
@@ -52,13 +45,6 @@ export const registerDriver = async (userId: string, input: DriverProfileInput) 
   }
 
   await addUserRole(userId, 'driver');
-
-  await prisma.user.update({
-    where: { id: userId },
-    data: {
-      verificationStatus: 'PENDING'
-    }
-  });
 
   const profile = await upsertDriverProfile(userId, input);
   await notifyRegistrationSubmitted(userId, 'Driver');

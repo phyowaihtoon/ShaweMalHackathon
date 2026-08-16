@@ -4,7 +4,8 @@ export type ProfileUser = {
   email: string
   phone: string
   profilePicturePath?: string | null
-  verificationStatus?: string
+  agentVerificationStatus?: string | null
+  driverVerificationStatus?: string | null
   roles: string[]
 }
 

@@ -90,9 +90,9 @@ Provider order: Theme → I18n → Query → Auth → Router.
 
 | Area | Requirement IDs | Notes |
 | --- | --- | --- |
-| Admin shell nav | FR-ADMIN portal | Dashboard, Verifications, Users, Moving Assign, Master Data, Reports |
+| Admin shell nav | FR-ADMIN portal | Dashboard, Agent verification, Driver verification, Users, Moving Assign, Master Data, Reports |
 | Dashboard | FR-ADMIN-006 (summary) | Cards from `GET /admin/reports/overview` + quick links |
-| Verifications | FR-ADMIN-001..002 | Agent/driver forms by `userId` + status (`pending\|approve\|reject`); pending counts from reports (no list queue API) |
+| Verifications | FR-ADMIN-001..002 | Agent/driver queues (`GET /admin/agents`, `GET /admin/drivers`) plus detail review and approve/reject (`PATCH .../verification`) |
 | Users & roles | FR-ADMIN-003..004 | Create user `POST /admin/users`; assign roles `PATCH /admin/users/:id/roles` by user id |
 | Moving assign | FR-MOVE-005 | `POST /admin/moving/requests/:id/assign` with requestId + driverUserId |
 | Master data CRUD | FR-ADMIN-005, MD-001..012 | Reusable entity pages for all `/admin/master-data/:entity` entities; DELETE soft-deactivates |
@@ -136,7 +136,10 @@ See repo root `FileUploadSpecification.md`.
 - `/driver/jobs/:id` Driver job detail / actions
 - `/admin/*` Admin portal (admin role only)
 - `/admin/dashboard` Reports overview cards
-- `/admin/verifications` Agent/driver verification by user ID
+- `/admin/verifications/agents` Agent verification queue
+- `/admin/verifications/agents/:userId` Agent registration review
+- `/admin/verifications/drivers` Driver verification queue
+- `/admin/verifications/drivers/:userId` Driver registration review
 - `/admin/users` Create user + assign roles
 - `/admin/moving-assign` Fallback moving assignment
 - `/admin/master-data` Master-data entity index

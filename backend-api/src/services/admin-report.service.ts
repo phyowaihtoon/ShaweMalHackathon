@@ -3,21 +3,20 @@ import { HouseAvailabilityStatus, ReviewTargetType, VerificationStatus } from '@
 import { prisma } from '../prisma/client';
 
 const buildVerificationSummary = async (roleName: 'agent' | 'driver') => {
-  const rows = await prisma.user.groupBy({
-    by: ['verificationStatus'],
-    where: {
-      userRoles: {
-        some: {
-          role: {
-            name: roleName
+  const rows =
+    roleName === 'agent'
+      ? await prisma.agentProfile.groupBy({
+          by: ['verificationStatus'],
+          _count: {
+            _all: true
           }
-        }
-      }
-    },
-    _count: {
-      _all: true
-    }
-  });
+        })
+      : await prisma.driverProfile.groupBy({
+          by: ['verificationStatus'],
+          _count: {
+            _all: true
+          }
+        });
 
   const counts: Record<VerificationStatus, number> = {
     PENDING: 0,

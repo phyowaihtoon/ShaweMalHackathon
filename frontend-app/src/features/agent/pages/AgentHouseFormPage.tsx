@@ -27,7 +27,7 @@ import {
 const selectClassName =
   'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
 
-function isVerifiedAgent(status: string | undefined): boolean {
+function isVerifiedAgent(status: string | null | undefined): boolean {
   return (status ?? '').toUpperCase() === 'VERIFIED'
 }
 
@@ -50,7 +50,7 @@ export function AgentHouseFormPage() {
   const [formError, setFormError] = useState<string | null>(null)
 
   const isAgent = Boolean(user?.roles?.includes('agent'))
-  const verified = isVerifiedAgent(user?.verificationStatus)
+  const verified = isVerifiedAgent(user?.agentVerificationStatus)
 
   useEffect(() => {
     if (!isBootstrapping && !isAuthenticated) {

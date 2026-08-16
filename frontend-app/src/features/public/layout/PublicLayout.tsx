@@ -67,22 +67,22 @@ export function PublicLayout() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
-          <div className="flex items-center gap-3">
+      <header className="border-b bg-secondary text-secondary-foreground">
+        <div className="mx-auto flex max-w-6xl items-center gap-4 px-4 py-3">
+          <div className="flex shrink-0 items-center gap-3">
             <img
               src={shawemalLogo}
               alt=""
               className="h-9 w-9 rounded-md object-cover"
             />
-            <span className="text-lg font-semibold tracking-tight">{t('common.appName')}</span>
+            <span className="text-xl font-bold tracking-tight">{t('common.appName')}</span>
           </div>
-          <nav className="hidden items-center gap-1 md:flex" aria-label="Primary">
+          <nav className="hidden min-w-0 flex-1 items-center justify-end gap-1 md:flex" aria-label="Primary">
             {topLinks.map((link) => (
               <NavItem key={link.to} to={link.to} label={t(link.labelKey)} end={'end' in link ? link.end : false} />
             ))}
           </nav>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             {!isBootstrapping && isAuthenticated ? (
               <>
                 <NotificationsMenu />
@@ -94,10 +94,12 @@ export function PublicLayout() {
           </div>
         </div>
         <Separator />
-        <nav className="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-4 py-2" aria-label="Sub">
-          {subLinks.map((link) => (
-            <NavItem key={link.to} to={link.to} label={t(link.labelKey)} />
-          ))}
+        <nav className="bg-muted text-foreground" aria-label="Sub">
+          <div className="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-4 py-2">
+            {subLinks.map((link) => (
+              <NavItem key={link.to} to={link.to} label={t(link.labelKey)} />
+            ))}
+          </div>
         </nav>
       </header>
       <main className="mx-auto max-w-6xl px-4 py-8">

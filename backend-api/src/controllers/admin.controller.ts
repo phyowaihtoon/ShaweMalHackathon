@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { VerificationStatus } from '@prisma/client';
 
 import { getAdminOverviewReport } from '../services/admin-report.service';
 import {
@@ -6,31 +7,18 @@ import {
   adminUpdateUserRoles,
   adminUpdateVerification,
   getAdminAgentRegistration,
-  getAdminDriverRegistration
+  getAdminDriverRegistration,
+  listAdminAgentRegistrations,
+  listAdminDriverRegistrations
 } from '../services/admin.service';
 import { assignMovingRequestByAdmin } from '../services/moving.service';
+import { toSafeUser } from '../services/user.service';
 import { ApiError } from '../utils/api-error';
 import { sendSuccess } from '../utils/api-response';
 
 const hasPrismaCode = (error: unknown, code: string): boolean => {
   return typeof error === 'object' && error !== null && 'code' in error && (error as { code?: unknown }).code === code;
 };
-
-const toSafeUser = (user: {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  verificationStatus: string;
-  userRoles: Array<{ role: { name: string } }>;
-}) => ({
-  id: user.id,
-  name: user.name,
-  email: user.email,
-  phone: user.phone,
-  verificationStatus: user.verificationStatus,
-  roles: user.userRoles.map((item) => item.role.name)
-});
 
 const requireActor = (req: Request): string => {
   if (!req.auth) {
@@ -39,6 +27,39 @@ const requireActor = (req: Request): string => {
 
   return req.auth.userId;
 };
+
+const parsePositiveInt = (value: unknown, fallback: number): number => {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return fallback;
+  }
+
+  return Math.floor(parsed);
+};
+
+const parseListStatus = (value: unknown): VerificationStatus | 'all' | undefined => {
+  if (typeof value !== 'string' || value.trim() === '') {
+    return undefined;
+  }
+
+  const normalized = value.trim().toUpperCase();
+  if (normalized === 'ALL') {
+    return 'all';
+  }
+
+  if (normalized === 'PENDING' || normalized === 'VERIFIED' || normalized === 'REJECTED') {
+    return normalized;
+  }
+
+  return undefined;
+};
+
+const parseListQuery = (req: Request) => ({
+  status: parseListStatus(req.query.status),
+  q: typeof req.query.q === 'string' ? req.query.q : undefined,
+  page: parsePositiveInt(req.query.page, 1),
+  pageSize: Math.min(parsePositiveInt(req.query.pageSize, 20), 50)
+});
 
 export const adminCreateUserController = async (req: Request, res: Response): Promise<void> => {
   const actorUserId = requireActor(req);
@@ -84,7 +105,8 @@ export const adminUpdateAgentVerificationController = async (req: Request, res: 
     actorUserId,
     userId,
     role: 'agent',
-    status: req.body.status
+    status: req.body.status,
+    rejectionReason: req.body.rejectionReason
   });
 
   sendSuccess(res, 200, 'Agent verification updated successfully', { user: toSafeUser(user) });
@@ -98,10 +120,21 @@ export const adminUpdateDriverVerificationController = async (req: Request, res:
     actorUserId,
     userId,
     role: 'driver',
-    status: req.body.status
+    status: req.body.status,
+    rejectionReason: req.body.rejectionReason
   });
 
   sendSuccess(res, 200, 'Driver verification updated successfully', { user: toSafeUser(user) });
+};
+
+export const adminListAgentRegistrationsController = async (req: Request, res: Response): Promise<void> => {
+  const payload = await listAdminAgentRegistrations(parseListQuery(req));
+  sendSuccess(res, 200, 'Agent registrations fetched successfully', payload);
+};
+
+export const adminListDriverRegistrationsController = async (req: Request, res: Response): Promise<void> => {
+  const payload = await listAdminDriverRegistrations(parseListQuery(req));
+  sendSuccess(res, 200, 'Driver registrations fetched successfully', payload);
 };
 
 export const adminGetAgentRegistrationController = async (req: Request, res: Response): Promise<void> => {

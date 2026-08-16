@@ -1,7 +1,8 @@
-import { BookingStatus, CancelledByRole, HouseAvailabilityStatus } from '@prisma/client';
+import { BookingStatus, CancelledByRole, HouseAvailabilityStatus, Prisma } from '@prisma/client';
 
 import { prisma } from '../prisma/client';
 import { ApiError } from '../utils/api-error';
+import { toMyReview } from './review.service';
 
 interface CreateBookingInput {
   userId: string;
@@ -67,8 +68,27 @@ const BOOKING_DETAIL_INCLUDE = {
       id: true,
       name: true
     }
+  },
+  ratingReview: {
+    select: {
+      id: true,
+      rating: true,
+      comment: true,
+      reviewerUserId: true
+    }
   }
 } as const;
+
+type BookingWithDetails = Prisma.BookingGetPayload<{ include: typeof BOOKING_DETAIL_INCLUDE }>;
+
+const mapBooking = (booking: BookingWithDetails, actorUserId?: string) => {
+  const { ratingReview, ...rest } = booking;
+
+  return {
+    ...rest,
+    myReview: actorUserId ? toMyReview(ratingReview, actorUserId) : null
+  };
+};
 
 const resolveCancelledByRole = (input: {
   isOwner: boolean;
@@ -166,7 +186,7 @@ export const getBookingById = async (bookingId: string, actorUserId: string, act
     throw new ApiError(403, 'BOOKING_FORBIDDEN', 'You are not allowed to view this booking.');
   }
 
-  return booking;
+  return mapBooking(booking, actorUserId);
 };
 
 export const updateBookingStatus = async (input: UpdateBookingStatusInput) => {
@@ -226,7 +246,7 @@ export const updateBookingStatus = async (input: UpdateBookingStatusInput) => {
       }
     });
 
-    return updated;
+    return mapBooking(updated, input.actorUserId);
   }
 
   const cancelledByRole = resolveCancelledByRole({ isOwner, isAgentOwner, isAdmin });
@@ -260,21 +280,23 @@ export const updateBookingStatus = async (input: UpdateBookingStatusInput) => {
     });
   }
 
-  return updated;
+  return mapBooking(updated, input.actorUserId);
 };
 
 export const listUserBookings = async (userId: string) => {
-  return prisma.booking.findMany({
+  const bookings = await prisma.booking.findMany({
     where: { userId },
     include: BOOKING_DETAIL_INCLUDE,
     orderBy: {
       createdAt: 'desc'
     }
   });
+
+  return bookings.map((booking) => mapBooking(booking, userId));
 };
 
 export const listAgentBookings = async (agentUserId: string) => {
-  return prisma.booking.findMany({
+  const bookings = await prisma.booking.findMany({
     where: {
       house: {
         agentId: agentUserId
@@ -285,6 +307,8 @@ export const listAgentBookings = async (agentUserId: string) => {
       createdAt: 'desc'
     }
   });
+
+  return bookings.map((booking) => mapBooking(booking));
 };
 
 export const listAdminBookings = async (options: AdminBookingReportOptions = {}) => {
@@ -321,11 +345,13 @@ export const listAdminBookings = async (options: AdminBookingReportOptions = {})
     };
   }
 
-  return prisma.booking.findMany({
+  const bookings = await prisma.booking.findMany({
     where,
     include: BOOKING_DETAIL_INCLUDE,
     orderBy: {
       createdAt: 'desc'
     }
   });
+
+  return bookings.map((booking) => mapBooking(booking));
 };

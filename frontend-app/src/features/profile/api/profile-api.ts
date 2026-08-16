@@ -1,12 +1,6 @@
 import { apiRequest } from '@/lib/api/client'
 
-import type {
-  ChangePasswordInput,
-  ProfileHistory,
-  ProfileUpdateInput,
-  ProfileUser,
-  ReviewCreateInput,
-} from '../types'
+import type { ChangePasswordInput, ProfileHistory, ProfileUpdateInput, ProfileUser } from '../types'
 
 export const profileApi = {
   get() {
@@ -26,20 +20,5 @@ export const profileApi = {
   },
   history() {
     return apiRequest<ProfileHistory>('/profile/history')
-  },
-}
-
-export const reviewsApi = {
-  create(input: ReviewCreateInput) {
-    return apiRequest<{ item: unknown }>('/reviews', {
-      method: 'POST',
-      body: input,
-    })
-  },
-  list(targetType: 'AGENT' | 'DRIVER', targetUserId: string) {
-    const search = new URLSearchParams({ targetType, targetUserId })
-    return apiRequest<{ items: unknown[]; averageRating?: number }>(`/reviews?${search.toString()}`, {
-      auth: false,
-    })
   },
 }

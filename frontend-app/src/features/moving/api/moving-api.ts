@@ -1,8 +1,14 @@
 import { apiRequest } from '@/lib/api/client'
 
-import type { MovingRequest, MovingRequestInput } from '../types'
+import type { MovingQuote, MovingQuoteInput, MovingRequest, MovingRequestInput } from '../types'
 
 export const movingApi = {
+  quote(input: MovingQuoteInput) {
+    return apiRequest<{ quote: MovingQuote }>('/moving/quote', {
+      method: 'POST',
+      body: input,
+    })
+  },
   create(input: MovingRequestInput) {
     return apiRequest<{ movingRequest: MovingRequest }>('/moving/requests', {
       method: 'POST',
@@ -11,5 +17,8 @@ export const movingApi = {
   },
   getById(id: string) {
     return apiRequest<{ movingRequest: MovingRequest }>(`/moving/requests/${id}`)
+  },
+  listMine() {
+    return apiRequest<{ items: MovingRequest[] }>('/moving/requests')
   },
 }

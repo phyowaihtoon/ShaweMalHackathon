@@ -25,19 +25,53 @@ interface MockVehicleType {
   isActive: boolean;
   capacityLabel?: string;
   maxLoadKg?: number;
+  pointFrom?: number;
+  pointTo?: number;
+  pricePerKm?: number;
+}
+
+interface MockFloorLevel {
+  id: string;
+  name: string;
+  levelNumber: number;
+  surchargeAmount: number;
+  isActive: boolean;
+}
+
+interface MockInventoryItemType {
+  id: string;
+  code: string;
+  category: string;
+  itemName: string;
+  points: number;
+  isActive: boolean;
 }
 
 interface MockMovingRequest {
   id: string;
+  orderNumber: string;
   requesterUserId: string;
   assignedDriverUserId: string | null;
   vehicleTypeId: string;
+  pickupFloorLevelId: string | null;
+  dropoffFloorLevelId: string | null;
   status: MovingRequestStatus;
   pickupAddress: string;
   dropoffAddress: string;
+  pickupLatitude: number | null;
+  pickupLongitude: number | null;
+  dropoffLatitude: number | null;
+  dropoffLongitude: number | null;
+  distanceKm: number | null;
   moveInDate: Date;
   remarks: string | null;
   damageChecklist: string | null;
+  totalInventoryPoints: number;
+  estimatedPrice: number | null;
+  pricePerKmUsed: number | null;
+  pickupFloorSurcharge: number | null;
+  dropoffFloorSurcharge: number | null;
+  estimatedEarnings: number | null;
   acceptedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
@@ -54,9 +88,12 @@ interface MockMovingRequestPhoto {
 interface MockMovingInventoryItem {
   id: string;
   movingRequestId: string;
+  inventoryItemTypeId: string | null;
   category: string;
   itemName: string;
   count: number;
+  pointsPerItem: number;
+  linePoints: number;
   createdAt: Date;
 }
 
@@ -88,6 +125,8 @@ const roles = new Map<string, MockRole>([
 
 const users = new Map<string, MockUser>();
 const vehicleTypes = new Map<string, MockVehicleType>();
+const floorLevels = new Map<string, MockFloorLevel>();
+const inventoryItemTypes = new Map<string, MockInventoryItemType>();
 const movingRequests = new Map<string, MockMovingRequest>();
 const movingPhotos: MockMovingRequestPhoto[] = [];
 const movingInventoryItems: MockMovingInventoryItem[] = [];
@@ -123,15 +162,30 @@ const hydrateMovingRequest = (movingRequest: MockMovingRequest) => {
           id: assignedDriver.id,
           name: assignedDriver.name,
           phone: assignedDriver.phone,
-          email: assignedDriver.email
+          email: assignedDriver.email,
+          driverProfile: {
+            name: assignedDriver.name,
+            phone: assignedDriver.phone,
+            profilePhotoPath: 'uploads/profile/driver-photo.jpg',
+            vehicleLicensePlateNumber: 'YGN 7J-1234'
+          }
         }
       : null,
     vehicleType: {
       id: vehicleType?.id ?? 'vehicle-unknown',
       name: vehicleType?.name ?? 'Unknown Vehicle',
       capacityLabel: vehicleType?.capacityLabel ?? null,
-      maxLoadKg: vehicleType?.maxLoadKg ?? null
+      maxLoadKg: vehicleType?.maxLoadKg ?? null,
+      pointFrom: vehicleType?.pointFrom ?? null,
+      pointTo: vehicleType?.pointTo ?? null,
+      pricePerKm: vehicleType?.pricePerKm ?? null
     },
+    pickupFloorLevel: movingRequest.pickupFloorLevelId
+      ? floorLevels.get(movingRequest.pickupFloorLevelId) ?? null
+      : null,
+    dropoffFloorLevel: movingRequest.dropoffFloorLevelId
+      ? floorLevels.get(movingRequest.dropoffFloorLevelId) ?? null
+      : null,
     photos: movingPhotos
       .filter((item) => item.movingRequestId === movingRequest.id)
       .sort((a, b) => a.sortOrder - b.sortOrder),
@@ -169,6 +223,19 @@ const projectMovingRequest = (record: MockMovingRequest, select?: Record<string,
   return projected;
 };
 
+jest.mock('../../src/services/geocode.service', () => {
+  const actual = jest.requireActual('../../src/services/geocode.service');
+  return {
+    ...actual,
+    geocodeAddress: jest.fn(async (address: string) => {
+      if (address.toLowerCase().includes('hledan')) {
+        return { latitude: 16.825, longitude: 96.13 };
+      }
+      return { latitude: 16.81, longitude: 96.177 };
+    })
+  };
+});
+
 jest.mock('../../src/prisma/client', () => {
   const prisma: any = {
     user: {
@@ -194,6 +261,40 @@ jest.mock('../../src/prisma/client', () => {
     vehicleType: {
       findUnique: jest.fn(async ({ where }: { where: { id: string } }) => {
         return vehicleTypes.get(where.id) ?? null;
+      }),
+      findMany: jest.fn(async ({ where }: { where: any }) => {
+        return Array.from(vehicleTypes.values()).filter((item) => {
+          if (where?.isActive === true && !item.isActive) {
+            return false;
+          }
+          if (where?.id?.not && item.id === where.id.not) {
+            return false;
+          }
+          return true;
+        });
+      })
+    },
+    floorLevel: {
+      findUnique: jest.fn(async ({ where }: { where: { id: string } }) => {
+        return floorLevels.get(where.id) ?? null;
+      }),
+      findMany: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn()
+    },
+    movingInventoryItemType: {
+      findMany: jest.fn(async ({ where }: { where: any }) => {
+        const ids: string[] = where?.id?.in ?? Array.from(inventoryItemTypes.keys());
+        return ids
+          .map((id) => inventoryItemTypes.get(id))
+          .filter((item): item is MockInventoryItemType => Boolean(item))
+          .filter((item) => (where?.isActive === true ? item.isActive : true));
+      }),
+      findUnique: jest.fn(async ({ where }: { where: { id?: string; code?: string } }) => {
+        if (where.id) {
+          return inventoryItemTypes.get(where.id) ?? null;
+        }
+        return Array.from(inventoryItemTypes.values()).find((item) => item.code === where.code) ?? null;
       })
     },
     movingRequest: {
@@ -203,15 +304,29 @@ jest.mock('../../src/prisma/client', () => {
 
         const created: MockMovingRequest = {
           id,
+          orderNumber: data.orderNumber,
           requesterUserId: data.requesterUserId,
           assignedDriverUserId: data.assignedDriverUserId ?? null,
           vehicleTypeId: data.vehicleTypeId,
-          status: data.status ?? MovingRequestStatus.PENDING,
+          pickupFloorLevelId: data.pickupFloorLevelId ?? null,
+          dropoffFloorLevelId: data.dropoffFloorLevelId ?? null,
+          status: data.status ?? MovingRequestStatus.BOOKED,
           pickupAddress: data.pickupAddress,
           dropoffAddress: data.dropoffAddress,
+          pickupLatitude: data.pickupLatitude ? Number(data.pickupLatitude) : null,
+          pickupLongitude: data.pickupLongitude ? Number(data.pickupLongitude) : null,
+          dropoffLatitude: data.dropoffLatitude ? Number(data.dropoffLatitude) : null,
+          dropoffLongitude: data.dropoffLongitude ? Number(data.dropoffLongitude) : null,
+          distanceKm: data.distanceKm ? Number(data.distanceKm) : null,
           moveInDate: new Date(data.moveInDate),
           remarks: data.remarks ?? null,
           damageChecklist: data.damageChecklist ?? null,
+          totalInventoryPoints: data.totalInventoryPoints ?? 0,
+          estimatedPrice: data.estimatedPrice ? Number(data.estimatedPrice) : null,
+          pricePerKmUsed: data.pricePerKmUsed ? Number(data.pricePerKmUsed) : null,
+          pickupFloorSurcharge: data.pickupFloorSurcharge ? Number(data.pickupFloorSurcharge) : null,
+          dropoffFloorSurcharge: data.dropoffFloorSurcharge ? Number(data.dropoffFloorSurcharge) : null,
+          estimatedEarnings: data.estimatedEarnings ? Number(data.estimatedEarnings) : null,
           acceptedAt: data.acceptedAt ?? null,
           createdAt: now,
           updatedAt: now
@@ -233,9 +348,12 @@ jest.mock('../../src/prisma/client', () => {
           movingInventoryItems.push({
             id: `moving-item-${movingInventoryItems.length + 1}`,
             movingRequestId: id,
+            inventoryItemTypeId: item.inventoryItemTypeId ?? null,
             category: item.category,
             itemName: item.itemName,
             count: item.count,
+            pointsPerItem: item.pointsPerItem ?? 0,
+            linePoints: item.linePoints ?? 0,
             createdAt: now
           });
         }
@@ -254,8 +372,10 @@ jest.mock('../../src/prisma/client', () => {
 
         return hydrateMovingRequest(created);
       }),
-      findUnique: jest.fn(async ({ where, include, select }: { where: { id: string }; include?: any; select?: Record<string, boolean> }) => {
-        const found = movingRequests.get(where.id);
+      findUnique: jest.fn(async ({ where, include, select }: { where: { id?: string; orderNumber?: string }; include?: any; select?: Record<string, boolean> }) => {
+        const found = where.id
+          ? movingRequests.get(where.id)
+          : Array.from(movingRequests.values()).find((item) => item.orderNumber === where.orderNumber);
         if (!found) {
           return null;
         }
@@ -266,8 +386,13 @@ jest.mock('../../src/prisma/client', () => {
 
         return projectMovingRequest(found, select);
       }),
+      count: jest.fn(async () => movingRequests.size),
       findMany: jest.fn(async ({ where }: { where: any }) => {
         const items = Array.from(movingRequests.values()).filter((item) => {
+          if (where?.requesterUserId && item.requesterUserId !== where.requesterUserId) {
+            return false;
+          }
+
           if (where?.status && item.status !== where.status) {
             return false;
           }
@@ -293,7 +418,7 @@ jest.mock('../../src/prisma/client', () => {
           return true;
         });
 
-        return items.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()).map((item) => hydrateMovingRequest(item));
+        return items.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()).map((item) => hydrateMovingRequest(item));
       }),
       updateMany: jest.fn(async ({ where, data }: { where: any; data: any }) => {
         const found = movingRequests.get(where.id);
@@ -434,7 +559,6 @@ jest.mock('../../src/prisma/client', () => {
     city: { findMany: jest.fn(), findUnique: jest.fn(), create: jest.fn(), update: jest.fn() },
     contractType: { findMany: jest.fn(), findUnique: jest.fn(), create: jest.fn(), update: jest.fn() },
     serviceRegion: { findMany: jest.fn(), findUnique: jest.fn(), create: jest.fn(), update: jest.fn() },
-    floorLevel: { findMany: jest.fn(), findUnique: jest.fn(), create: jest.fn(), update: jest.fn() },
     occupation: { findMany: jest.fn(), findUnique: jest.fn(), create: jest.fn(), update: jest.fn() },
     amenity: { findMany: jest.fn(), findUnique: jest.fn(), create: jest.fn(), update: jest.fn() },
     statusCode: { findMany: jest.fn(), findUnique: jest.fn(), create: jest.fn(), update: jest.fn() },
@@ -460,6 +584,8 @@ const adminToken = signJwt({ sub: 'admin-1', email: 'admin@example.com', roles: 
 const seedData = () => {
   users.clear();
   vehicleTypes.clear();
+  floorLevels.clear();
+  inventoryItemTypes.clear();
   movingRequests.clear();
   movingPhotos.length = 0;
   movingInventoryItems.length = 0;
@@ -533,28 +659,97 @@ const seedData = () => {
     name: 'Light Truck',
     isActive: true,
     capacityLabel: '1.5 Ton',
-    maxLoadKg: 1500
+    maxLoadKg: 1500,
+    pointFrom: 0,
+    pointTo: 200,
+    pricePerKm: 1100
+  });
+
+  floorLevels.set('floor-1', {
+    id: 'floor-1',
+    name: '1st Floor',
+    levelNumber: 1,
+    surchargeAmount: 5000,
+    isActive: true
+  });
+  floorLevels.set('floor-2', {
+    id: 'floor-2',
+    name: '2nd Floor',
+    levelNumber: 2,
+    surchargeAmount: 10000,
+    isActive: true
+  });
+
+  inventoryItemTypes.set('inv-wardrobe', {
+    id: 'inv-wardrobe',
+    code: 'bedroom_wardrobe',
+    category: 'bedroom',
+    itemName: 'Wardrobe',
+    points: 14,
+    isActive: true
+  });
+  inventoryItemTypes.set('inv-fridge', {
+    id: 'inv-fridge',
+    code: 'kitchen_refrigerator',
+    category: 'kitchen',
+    itemName: 'Refrigerator',
+    points: 14,
+    isActive: true
+  });
+  inventoryItemTypes.set('inv-boxes', {
+    id: 'inv-boxes',
+    code: 'other_boxes',
+    category: 'other',
+    itemName: 'Boxes',
+    points: 2,
+    isActive: true
   });
 };
 
 const createMovingPayload = () => ({
   pickupAddress: 'Hledan, Yangon',
   dropoffAddress: 'Tamwe, Yangon',
+  pickupFloorLevelId: 'floor-1',
+  dropoffFloorLevelId: 'floor-2',
   moveInDate: '2026-09-01T09:00:00.000Z',
   vehicleTypeId: 'vt-truck',
   remarks: 'Handle fragile items carefully',
   damageChecklist: 'Existing small scratch on wardrobe',
   photos: ['uploads/moving/photo-1.jpg', 'uploads/moving/photo-2.jpg'],
   inventoryItems: [
-    { category: 'Bedroom', itemName: 'Wardrobe', count: 1 },
-    { category: 'Kitchen', itemName: 'Refrigerator', count: 1 },
-    { category: 'Other', itemName: 'Boxes', count: 8 }
+    { inventoryItemTypeId: 'inv-wardrobe', count: 1 },
+    { inventoryItemTypeId: 'inv-fridge', count: 1 },
+    { inventoryItemTypeId: 'inv-boxes', count: 8 }
   ]
 });
 
 describe('Moving and driver workflow integration', () => {
   beforeEach(() => {
     seedData();
+  });
+
+  it('quotes estimated price from floors, points, and geocoded distance', async () => {
+    const quoteResponse = await request(app)
+      .post('/api/v1/moving/quote')
+      .set('Authorization', `Bearer ${requesterToken}`)
+      .send({
+        pickupAddress: 'Hledan, Yangon',
+        dropoffAddress: 'Tamwe, Yangon',
+        pickupFloorLevelId: 'floor-1',
+        dropoffFloorLevelId: 'floor-2',
+        inventoryItems: [
+          { inventoryItemTypeId: 'inv-wardrobe', count: 1 },
+          { inventoryItemTypeId: 'inv-fridge', count: 1 },
+          { inventoryItemTypeId: 'inv-boxes', count: 8 }
+        ]
+      });
+
+    expect(quoteResponse.status).toBe(200);
+    expect(quoteResponse.body.data.quote.suggestedVehicleType.id).toBe('vt-truck');
+    expect(quoteResponse.body.data.quote.totalInventoryPoints).toBe(44);
+    expect(quoteResponse.body.data.quote.pickupFloorSurcharge).toBe(5000);
+    expect(quoteResponse.body.data.quote.dropoffFloorSurcharge).toBe(10000);
+    expect(quoteResponse.body.data.quote.estimatedPrice).toBeGreaterThan(15000);
   });
 
   it('creates moving request, notifies drivers, and lists available requests for verified driver', async () => {
@@ -564,8 +759,10 @@ describe('Moving and driver workflow integration', () => {
       .send(createMovingPayload());
 
     expect(createResponse.status).toBe(201);
-    expect(createResponse.body.data.movingRequest.status).toBe('PENDING');
+    expect(createResponse.body.data.movingRequest.status).toBe('BOOKED');
+    expect(createResponse.body.data.movingRequest.orderNumber).toMatch(/^MOV-/);
     expect(createResponse.body.data.movingRequest.inventoryItems.length).toBe(3);
+    expect(createResponse.body.data.movingRequest.estimatedPrice).toBeGreaterThan(0);
     expect(notifications.filter((item) => item.title === 'New Moving Request').length).toBe(2);
 
     const availableResponse = await request(app)
@@ -595,6 +792,37 @@ describe('Moving and driver workflow integration', () => {
       .set('Authorization', `Bearer ${unverifiedDriverToken}`);
 
     expect(unverifiedDetailView.status).toBe(403);
+  });
+
+  it('lists only the requester moving bookings for Moving Status', async () => {
+    const first = await request(app)
+      .post('/api/v1/moving/requests')
+      .set('Authorization', `Bearer ${requesterToken}`)
+      .send(createMovingPayload());
+    const second = await request(app)
+      .post('/api/v1/moving/requests')
+      .set('Authorization', `Bearer ${requesterToken}`)
+      .send(createMovingPayload());
+
+    expect(first.status).toBe(201);
+    expect(second.status).toBe(201);
+
+    const listResponse = await request(app)
+      .get('/api/v1/moving/requests')
+      .set('Authorization', `Bearer ${requesterToken}`);
+
+    expect(listResponse.status).toBe(200);
+    expect(listResponse.body.data.items).toHaveLength(2);
+    expect(listResponse.body.data.items.map((item: { id: string }) => item.id)).toEqual(
+      expect.arrayContaining([first.body.data.movingRequest.id, second.body.data.movingRequest.id])
+    );
+
+    const driverList = await request(app)
+      .get('/api/v1/moving/requests')
+      .set('Authorization', `Bearer ${driver1Token}`);
+
+    expect(driverList.status).toBe(200);
+    expect(driverList.body.data.items).toHaveLength(0);
   });
 
   it('allows first driver accept and rejects second accept attempt', async () => {
@@ -693,25 +921,35 @@ describe('Moving and driver workflow integration', () => {
     const forbiddenStatus = await request(app)
       .post(`/api/v1/driver/requests/${movingRequestId}/status`)
       .set('Authorization', `Bearer ${driver2Token}`)
-      .send({ status: 'in_progress' });
+      .send({ status: 'driver_coming' });
 
     expect(forbiddenStatus.status).toBe(403);
 
-    const inProgress = await request(app)
+    const skipAhead = await request(app)
       .post(`/api/v1/driver/requests/${movingRequestId}/status`)
       .set('Authorization', `Bearer ${driver1Token}`)
-      .send({ status: 'in_progress' });
+      .send({ status: 'loading' });
 
-    expect(inProgress.status).toBe(200);
-    expect(inProgress.body.data.movingRequest.status).toBe('IN_PROGRESS');
+    expect(skipAhead.status).toBe(409);
 
-    const completed = await request(app)
-      .post(`/api/v1/driver/requests/${movingRequestId}/status`)
-      .set('Authorization', `Bearer ${driver1Token}`)
-      .send({ status: 'completed' });
+    const operationalStatuses = [
+      'driver_coming',
+      'driver_arrived',
+      'loading',
+      'on_the_way',
+      'unloading',
+      'completed'
+    ] as const;
 
-    expect(completed.status).toBe(200);
-    expect(completed.body.data.movingRequest.status).toBe('COMPLETED');
+    for (const status of operationalStatuses) {
+      const response = await request(app)
+        .post(`/api/v1/driver/requests/${movingRequestId}/status`)
+        .set('Authorization', `Bearer ${driver1Token}`)
+        .send({ status });
+
+      expect(response.status).toBe(200);
+      expect(response.body.data.movingRequest.status).toBe(status.toUpperCase());
+    }
 
     const completionNotification = notifications.find((item) => item.title === 'Moving Request Completed');
     expect(completionNotification).toBeDefined();
@@ -724,10 +962,12 @@ describe('Moving and driver workflow integration', () => {
       .send({
         pickupAddress: '',
         dropoffAddress: '',
+        pickupFloorLevelId: '',
+        dropoffFloorLevelId: '',
         moveInDate: 'not-a-date',
         vehicleTypeId: '',
         photos: [],
-        inventoryItems: [{ category: 'Bedroom', itemName: 'Bed', count: -1 }]
+        inventoryItems: [{ inventoryItemTypeId: '', count: -1 }]
       });
 
     expect(invalidResponse.status).toBe(400);

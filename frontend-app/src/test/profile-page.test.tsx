@@ -82,5 +82,7 @@ describe('profile page', () => {
     expect(screen.getByRole('button', { name: /change password/i })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /wishlist/i })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /history/i })).toBeInTheDocument()
+    expect(screen.queryByText(/rate an agent or driver/i)).not.toBeInTheDocument()
+    expect(screen.queryByLabelText(/target user id/i)).not.toBeInTheDocument()
   })
 })

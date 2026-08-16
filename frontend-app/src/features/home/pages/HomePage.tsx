@@ -8,6 +8,7 @@ import shawemalLogo from '@/assets/shawemal-logo.jpg'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { HouseCard } from '@/features/houses/components/HouseCard'
+import { StarRating } from '@/features/reviews/components/StarRating'
 
 import { homeApi } from '../api/home-api'
 
@@ -186,10 +187,12 @@ export function HomePage() {
                 {homeQuery.data.serviceReviews.map((review) => (
                   <Card key={review.id}>
                     <CardContent className="space-y-2 p-4">
-                      <p className="text-sm font-medium">
-                        {t('home.reviewRating', { rating: review.rating })}
-                        {review.targetUser?.name ? ` · ${review.targetUser.name}` : ''}
-                      </p>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <StarRating value={review.rating} readOnly size="sm" />
+                        {review.targetUser?.name ? (
+                          <p className="text-sm font-medium">{review.targetUser.name}</p>
+                        ) : null}
+                      </div>
                       <p className="text-sm text-muted-foreground">
                         {review.comment?.trim() || t('home.reviewNoComment')}
                       </p>

@@ -49,7 +49,15 @@ export async function geocodeNominatim(
     return null
   }
 
-  const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${encodeURIComponent(trimmed)}`
+  const params = new URLSearchParams({
+    format: 'jsonv2',
+    limit: '1',
+    q: trimmed,
+    countrycodes: 'mm',
+    viewbox: '95.9,17.2,96.5,16.65',
+    bounded: '0',
+  })
+  const url = `https://nominatim.openstreetmap.org/search?${params.toString()}`
   const response = await fetchImpl(url, {
     headers: { Accept: 'application/json' },
   })

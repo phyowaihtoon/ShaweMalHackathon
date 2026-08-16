@@ -26,4 +26,9 @@ export type HouseBooking = {
   } | null
   user?: BookingUserSummary | null
   cancelledByUser?: { id: string; name: string } | null
+  myReview?: {
+    id: string
+    rating: number
+    comment?: string | null
+  } | null
 }

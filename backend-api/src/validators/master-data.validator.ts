@@ -64,6 +64,19 @@ const ensureCreateFieldsByEntity = body().custom((_, { req }) => {
     return true;
   }
 
+  if (entity === 'moving-inventory-items') {
+    if (
+      typeof req.body.code !== 'string' ||
+      typeof req.body.category !== 'string' ||
+      typeof req.body.itemName !== 'string' ||
+      typeof req.body.points !== 'number'
+    ) {
+      throw new Error('code, category, itemName, and points are required.');
+    }
+
+    return true;
+  }
+
   if (typeof req.body.name !== 'string' || req.body.name.trim().length === 0) {
     throw new Error('name is required.');
   }

@@ -24,7 +24,14 @@ export type DriverEtaInput = {
 }
 
 export type DriverStatusInput = {
-  status: 'in_progress' | 'completed' | 'cancelled'
+  status:
+    | 'driver_coming'
+    | 'driver_arrived'
+    | 'loading'
+    | 'on_the_way'
+    | 'unloading'
+    | 'completed'
+    | 'cancelled'
   notes?: string
 }
 

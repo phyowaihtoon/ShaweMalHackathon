@@ -14,6 +14,23 @@ import { resolvePublicUploadUrl } from '@/lib/uploads/resolve-public-url'
 
 import { driverJobsApi, type DriverStatusInput } from '../api/driver-api'
 
+const DRIVER_ETA_STAGES = [
+  { value: 'driver_coming', labelKey: 'driver.statusDriverComing' },
+  { value: 'driver_arrived', labelKey: 'driver.statusDriverArrived' },
+  { value: 'loading', labelKey: 'driver.statusLoading' },
+  { value: 'on_the_way', labelKey: 'driver.statusOnTheWay' },
+  { value: 'unloading', labelKey: 'driver.statusUnloading' },
+] as const
+const DRIVER_STATUS_OPTIONS: Array<{ value: DriverStatusInput['status']; labelKey: string }> = [
+  { value: 'driver_coming', labelKey: 'driver.statusDriverComing' },
+  { value: 'driver_arrived', labelKey: 'driver.statusDriverArrived' },
+  { value: 'loading', labelKey: 'driver.statusLoading' },
+  { value: 'on_the_way', labelKey: 'driver.statusOnTheWay' },
+  { value: 'unloading', labelKey: 'driver.statusUnloading' },
+  { value: 'completed', labelKey: 'driver.statusCompleted' },
+  { value: 'cancelled', labelKey: 'driver.statusCancelled' },
+]
+
 const selectClassName =
   'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
 
@@ -26,10 +43,10 @@ export function DriverJobsPage() {
   const queryClient = useQueryClient()
   const [actionError, setActionError] = useState<string | null>(null)
   const [actionSuccess, setActionSuccess] = useState<string | null>(null)
-  const [etaStage, setEtaStage] = useState('pickup')
+  const [etaStage, setEtaStage] = useState<(typeof DRIVER_ETA_STAGES)[number]['value']>('driver_coming')
   const [etaAt, setEtaAt] = useState('')
   const [etaNotes, setEtaNotes] = useState('')
-  const [status, setStatus] = useState<DriverStatusInput['status']>('in_progress')
+  const [status, setStatus] = useState<DriverStatusInput['status']>('driver_coming')
   const [statusNotes, setStatusNotes] = useState('')
 
   const isDriver = Boolean(user?.roles?.includes('driver'))
@@ -155,7 +172,7 @@ export function DriverJobsPage() {
 
     const request = detailQuery.data.movingRequest
     const isAssignedToMe = request.assignedDriver?.id === user?.id
-    const canRespond = request.status === 'PENDING' && !request.assignedDriver
+    const canRespond = request.status === 'BOOKED' && !request.assignedDriver
 
     return (
       <Card className="mx-auto max-w-3xl">
@@ -163,6 +180,9 @@ export function DriverJobsPage() {
           <CardTitle>
             <h1 className="text-2xl">{t('driver.jobDetailTitle')}</h1>
           </CardTitle>
+          <p className="text-sm text-muted-foreground">
+            {t('moving.orderNumber')}: {request.orderNumber ?? request.id}
+          </p>
           <p className="text-sm text-muted-foreground">
             {t('moving.statusLabel')}: {request.status}
           </p>
@@ -240,7 +260,18 @@ export function DriverJobsPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="eta-stage">{t('driver.etaStage')}</Label>
-                <Input id="eta-stage" value={etaStage} onChange={(e) => setEtaStage(e.target.value)} />
+                <select
+                  id="eta-stage"
+                  className={selectClassName}
+                  value={etaStage}
+                  onChange={(e) => setEtaStage(e.target.value as (typeof DRIVER_ETA_STAGES)[number]['value'])}
+                >
+                  {DRIVER_ETA_STAGES.map((stage) => (
+                    <option key={stage.value} value={stage.value}>
+                      {t(stage.labelKey)}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="eta-at">{t('driver.etaAt')}</Label>
@@ -274,9 +305,11 @@ export function DriverJobsPage() {
                   value={status}
                   onChange={(e) => setStatus(e.target.value as DriverStatusInput['status'])}
                 >
-                  <option value="in_progress">{t('driver.statusInProgress')}</option>
-                  <option value="completed">{t('driver.statusCompleted')}</option>
-                  <option value="cancelled">{t('driver.statusCancelled')}</option>
+                  {DRIVER_STATUS_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {t(option.labelKey)}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div className="space-y-2">
@@ -336,7 +369,7 @@ export function DriverJobsPage() {
             <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="space-y-1 text-sm">
                 <p className="font-medium">
-                  {item.pickupAddress} → {item.dropoffAddress}
+                  {item.orderNumber ?? item.id}: {item.pickupAddress} → {item.dropoffAddress}
                 </p>
                 <p className="text-muted-foreground">
                   {t('moving.estimatedEarnings')}: {item.estimatedEarnings ?? '—'}

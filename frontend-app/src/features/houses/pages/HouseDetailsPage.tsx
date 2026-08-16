@@ -6,14 +6,17 @@ import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/app/providers/AuthProvider'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { ServiceRatingForm } from '@/features/reviews/components/ServiceRatingForm'
 import { ApiRequestError } from '@/lib/api/client'
 import { resolvePublicUploadUrl } from '@/lib/uploads/resolve-public-url'
 
 import { bookingsApi } from '../api/bookings-api'
 import { housesApi } from '../api/houses-api'
 import { CancelBookingDialog } from '../components/CancelBookingDialog'
+import { HouseAvailabilityBadge } from '../components/HouseAvailabilityBadge'
 import { HouseLocationMap } from '../components/HouseLocationMap'
 import { useWishlist } from '../hooks/useWishlist'
+import { isHouseAvailable } from '../lib/availability'
 
 function formatFees(value: number) {
   return new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(value)
@@ -63,6 +66,8 @@ export function HouseDetailsPage() {
   const myActiveBooking = myBookingsQuery.data?.items.find(
     (item) => item.houseId === id && item.status.toUpperCase() !== 'CANCELLED',
   )
+  const myConfirmedBooking =
+    myActiveBooking?.status.toUpperCase() === 'CONFIRMED' ? myActiveBooking : undefined
 
   const cancelMutation = useMutation({
     mutationFn: (bookingId: string) => bookingsApi.updateStatus(bookingId, 'CANCELLED'),
@@ -128,6 +133,9 @@ export function HouseDetailsPage() {
             </Link>
           </p>
           <h1 className="mt-2 text-3xl font-semibold tracking-tight">{house.title}</h1>
+          <div className="mt-2">
+            <HouseAvailabilityBadge availability={house.availability} />
+          </div>
           <p className="mt-1 text-muted-foreground">
             {[
               house.location.streetAddress,
@@ -225,6 +233,10 @@ export function HouseDetailsPage() {
             </p>
             <div className="grid gap-2 sm:grid-cols-2">
               <p>
+                <span className="font-medium">{t('houses.availability')}: </span>
+                {isHouseAvailable(house.availability) ? t('houses.available') : t('houses.notAvailable')}
+              </p>
+              <p>
                 <span className="font-medium">{t('houses.monthlyFeesLabel')}: </span>
                 {formatFees(house.monthlyFees)}
               </p>
@@ -293,6 +305,15 @@ export function HouseDetailsPage() {
                 <span className="font-medium">{t('houses.contactPhone')}: </span>
                 {house.contact.phone}
               </p>
+            ) : null}
+            {myConfirmedBooking ? (
+              <ServiceRatingForm
+                className="border-t border-border pt-4"
+                source={{ bookingId: myConfirmedBooking.id }}
+                targetKind="agent"
+                targetName={house.agent.name}
+                existing={myConfirmedBooking.myReview}
+              />
             ) : null}
           </CardContent>
         </Card>

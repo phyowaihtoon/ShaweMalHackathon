@@ -292,16 +292,7 @@ export function AgentHouseFormPage() {
                 <FieldError message={errors.title?.message} />
               </div>
 
-              <div className="space-y-2 sm:col-span-2">
-                <Label htmlFor="description">{t('agent.houses.fields.description')}</Label>
-                <textarea
-                  id="description"
-                  rows={3}
-                  className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  {...register('description')}
-                  disabled={!verified}
-                />
-              </div>
+              
 
               <div className="space-y-2">
                 <Label htmlFor="availability">{t('agent.houses.availability')}</Label>
@@ -605,6 +596,18 @@ export function AgentHouseFormPage() {
                   disabled={!verified}
                 />
               </div>
+
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="description">{t('agent.houses.fields.description')}</Label>
+                <textarea
+                  id="description"
+                  rows={3}
+                  className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  {...register('description')}
+                  disabled={!verified}
+                />
+              </div>
+              
             </div>
 
             {formError ? (

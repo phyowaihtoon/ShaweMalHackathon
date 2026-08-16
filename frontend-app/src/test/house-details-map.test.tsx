@@ -35,6 +35,7 @@ describe('house details location map', () => {
                   id: 'h1',
                   title: 'Inya Garden Flat',
                   description: 'Quiet street',
+                  availability: 'AVAILABLE',
                   monthlyFees: 400000,
                   depositAmount: 800000,
                   bedrooms: 2,
@@ -71,6 +72,8 @@ describe('house details location map', () => {
     )
 
     expect(await screen.findByRole('heading', { name: 'Inya Garden Flat' })).toBeInTheDocument()
+    expect(screen.getAllByText('Available').length).toBeGreaterThan(0)
+    expect(screen.getByText(/availability:/i)).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /location map/i })).toBeInTheDocument()
     expect(screen.getByTestId('house-location-map')).toHaveTextContent('42 Inya Road · Kamayut Township')
   })

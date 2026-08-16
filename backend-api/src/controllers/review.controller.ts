@@ -26,18 +26,32 @@ const parseTargetType = (value: unknown): ReviewTargetType | undefined => {
   return undefined;
 };
 
+const optionalTrimmed = (value: unknown): string | undefined => {
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+};
+
 export const createReviewController = async (req: Request, res: Response): Promise<void> => {
   const reviewerUserId = requireActor(req);
 
-  const item = await createReview({
+  const { item, created } = await createReview({
     reviewerUserId,
-    targetType: parseTargetType(req.body.targetType) as ReviewTargetType,
-    targetUserId: req.body.targetUserId,
     rating: Number(req.body.rating),
-    comment: req.body.comment
+    comment: typeof req.body.comment === 'string' ? req.body.comment : undefined,
+    bookingId: optionalTrimmed(req.body.bookingId),
+    movingRequestId: optionalTrimmed(req.body.movingRequestId)
   });
 
-  sendSuccess(res, 201, 'Review submitted successfully', { item });
+  sendSuccess(
+    res,
+    created ? 201 : 200,
+    created ? 'Review submitted successfully' : 'Review updated successfully',
+    { item }
+  );
 };
 
 export const listReviewsController = async (req: Request, res: Response): Promise<void> => {

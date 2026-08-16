@@ -78,11 +78,13 @@ Provider order: Theme → I18n → Query → Auth → Router.
 
 | Area | Requirement IDs | Notes |
 | --- | --- | --- |
-| Hire Moving | FR-MOVE-001..002, FR-HOUSE-005 | Auth-gated form §8.4 → `POST /moving/requests`; detail via `GET /moving/requests/:id`; booking confirmation Yes → `/hire-moving?bookingId&houseId` |
+| Hire Moving | FR-MOVE-001..002, FR-MOVE-006, FR-HOUSE-005 | Auth-gated four-stage wizard §8.4 → `POST /moving/quote` then `POST /moving/requests` (status `BOOKED`); detail via `GET /moving/requests/:id`; booking confirmation Yes → `/hire-moving?bookingId&houseId` |
+| Moving Status | FR-MOVE-007 | Auth-gated `/moving-status` lists requester bookings (`GET /moving/requests`); Check Status opens `/moving-status/:id` (`GET /moving/requests/:id`) |
 | Driver Register | FR-DRIVER-001 | `/driver-register` → `POST /registrations/driver` (path placeholders) |
 | Roommates | FR-ROOM-001..002 | Browse `GET /roommates` with filters; auth post `POST /roommates` |
-| Profile module | FR-PROFILE-001..003, FR-NOTI-001 UI | `/profile`, wishlist, history; `GET/PATCH /profile`, change-password; reviews `POST /reviews`; notifications mark-read kept |
-| Driver jobs | FR-DRIVER-003..006 | `/driver/jobs` for `driver` role: available list, accept/reject, ETA, status |
+| Profile module | FR-PROFILE-001, FR-PROFILE-004, FR-NOTI-001 UI | `/profile`, wishlist, history; `GET/PATCH /profile`, change-password; notifications mark-read kept |
+| Ratings | FR-PROFILE-003 | 1–5 stars on Moving Status (completed), House details (confirmed booking), and History; `POST /reviews` with `bookingId` or `movingRequestId` |
+| Driver jobs | FR-DRIVER-003..006 | `/driver/jobs` for `driver` role: available list, accept/reject, ETA, sequential status (`driver_coming` … `completed`) |
 
 ### Increment C
 
@@ -93,7 +95,7 @@ Provider order: Theme → I18n → Query → Auth → Router.
 | Verifications | FR-ADMIN-001..002 | Agent/driver forms by `userId` + status (`pending\|approve\|reject`); pending counts from reports (no list queue API) |
 | Users & roles | FR-ADMIN-003..004 | Create user `POST /admin/users`; assign roles `PATCH /admin/users/:id/roles` by user id |
 | Moving assign | FR-MOVE-005 | `POST /admin/moving/requests/:id/assign` with requestId + driverUserId |
-| Master data CRUD | FR-ADMIN-005, MD-001..011 | Reusable entity pages for all `/admin/master-data/:entity` entities; DELETE soft-deactivates |
+| Master data CRUD | FR-ADMIN-005, MD-001..012 | Reusable entity pages for all `/admin/master-data/:entity` entities; DELETE soft-deactivates |
 | Reports | FR-ADMIN-006 | From/to filters + overview sections (housing, bookings, moving, top performers) |
 | House booking report | FR-ADMIN-007 | `/admin/reports/bookings` lists all booking records with date and status filters |
 

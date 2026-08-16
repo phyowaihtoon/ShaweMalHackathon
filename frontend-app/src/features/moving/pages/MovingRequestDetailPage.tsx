@@ -42,17 +42,28 @@ export function MovingRequestDetailPage() {
           <h1 className="text-2xl">{t('moving.detailTitle')}</h1>
         </CardTitle>
         <p className="text-sm text-muted-foreground">
+          {t('moving.orderNumber')}: {request.orderNumber ?? request.id}
+        </p>
+        <p className="text-sm text-muted-foreground">
           {t('moving.statusLabel')}: {request.status}
         </p>
       </CardHeader>
       <CardContent className="space-y-4 text-sm">
         <DetailRow label={t('moving.pickupAddress')} value={request.pickupAddress} />
         <DetailRow label={t('moving.dropoffAddress')} value={request.dropoffAddress} />
+        <DetailRow label={t('moving.pickupFloor')} value={request.pickupFloorLevel?.name ?? '—'} />
+        <DetailRow label={t('moving.dropoffFloor')} value={request.dropoffFloorLevel?.name ?? '—'} />
         <DetailRow
           label={t('moving.moveInDate')}
           value={request.moveInDate ? new Date(request.moveInDate).toLocaleDateString() : '—'}
         />
         <DetailRow label={t('moving.vehicleType')} value={request.vehicleType?.name ?? '—'} />
+        {typeof request.estimatedPrice === 'number' ? (
+          <DetailRow label={t('moving.estimatedPrice')} value={`${request.estimatedPrice.toLocaleString()} MMK`} />
+        ) : null}
+        {typeof request.distanceKm === 'number' ? (
+          <DetailRow label={t('moving.distance')} value={`${request.distanceKm} km`} />
+        ) : null}
         <DetailRow label={t('moving.damageChecklist')} value={request.damageChecklist ?? '—'} />
         <DetailRow label={t('moving.remarks')} value={request.remarks ?? '—'} />
         {typeof request.estimatedEarnings === 'number' ? (

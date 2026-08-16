@@ -108,6 +108,7 @@ export type AdminMasterDataEntity =
   | 'amenities'
   | 'status-codes'
   | 'roles'
+  | 'moving-inventory-items'
 
 export type AdminMasterDataItem = {
   id: string

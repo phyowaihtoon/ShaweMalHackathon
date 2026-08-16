@@ -4,10 +4,12 @@
 - **Project Name**: ShweMal
 - **Document Type**: Software Requirement Specification (SRS)
 - **Platform**: Web Application
-- **Version**: 1.1
-- **Date**: 2026-08-13
+- **Version**: 1.3
+- **Date**: 2026-08-16
 - **Prepared For**: Product, Design, Development, QA, and Operations Teams
 - **Revision 1.1**: House booking workflow rewritten (confirmation page, confirmed-on-submit, duplicate prevention, agent booking list/cancel, cancellation actor tracking, dedicated admin house booking report). Application implementation of this workflow is pending a separate build confirmation.
+- **Revision 1.2**: Moving request lifecycle statuses finalized (Booked plus operational delivery steps). Moving Status screen specified for tracking one or more bookings (FR-MOVE-007).
+- **Revision 1.3**: Ratings moved out of Profile. Users rate agents after a confirmed booking and drivers after a completed move using 1–5 stars; one rating per job with upsert.
 
 ---
 
@@ -83,6 +85,7 @@ The application contains:
 ### Sub Header (Sub Navigation)
 - Finding House
 - Hire Moving Service
+- Moving Status
 - Finding Roommates
 - Post Housing Information (visible only to users with the agent role; opens agent housing manage/post flow)
 
@@ -101,6 +104,7 @@ The application contains:
 - Moving service request and driver job workflow
 - Roommate browsing and posting
 - User profile, wishlist, notifications, and history
+- Ratings and reviews for listing agents (after a confirmed house booking) and assigned drivers (after a completed moving request)
 - Admin management and reporting
 
 ### Out of Scope (Initial Release)
@@ -176,6 +180,7 @@ The application contains:
   - Location (optional street address, optional latitude/longitude, and a map on the details page)
   - Pricing
   - Agent details
+- After the signed-in user has a **Confirmed** booking for that house, the details page shall let the user rate the listing agent with a 1 to 5 star control (FR-PROFILE-003). Guests, users with no booking, and cancelled bookings shall not see this prompt.
 
 ### FR-HOUSE-004 Booking
 - Logged-in users shall be able to book a house.
@@ -249,15 +254,27 @@ The application contains:
   - Damage checklist
 
 ### FR-DRIVER-006 Delivery Status Update
-- Driver shall update delivery status throughout moving lifecycle.
+- Driver shall update delivery status throughout the moving lifecycle in order: Driver Coming, Driver Arrived, Loading, On the Way, Unloading, then Completed.
+- Driver may cancel a request that is not yet Completed or Cancelled.
 
 ## 7.6 Hire Moving Service Module
 ### FR-MOVE-001 Moving Request Form
-- User shall fill moving information form and submit a moving service request.
-- User shall be able to access this form directly from the **Hire Moving Service** link at any later time.
+- User shall complete a four-stage Hire Moving wizard and confirm a moving service request.
+- User shall be able to access this wizard directly from the **Hire Moving Service** link at any later time.
+- Stage 1 collects Yangon township, optional street/landmark, and map pins for pickup and drop-off.
+- Stage 2 collects remaining request details except vehicle type (move-in date, floors, photos, damage checklist, remarks, inventory counts). Total inventory items must be greater than zero.
+- Stage 3 shows a suggested vehicle type and estimated price; the user may change vehicle type and then confirm booking.
+- Stage 4 shows booking confirmation with order number and the booker's name and contact details.
 
 ### FR-MOVE-002 Inventory-Based Request
-- Form shall include detailed item counts by room/category and vehicle type selection.
+- Form shall include detailed item counts by room/category from moving inventory master data.
+- Vehicle type shall be suggested from total inventory points (`count * points per item`) using Vehicle Type Point From / Point To ranges.
+
+### FR-MOVE-006 Estimated Price Quote
+- System shall calculate estimated price as pickup floor surcharge + drop-off floor surcharge + (PricePerKM × distance in kilometers).
+- Distance shall be calculated from pickup and drop-off map coordinates when provided; otherwise from geocoded addresses biased to Yangon, Myanmar.
+- Floor surcharges come from Floor Level master data. PricePerKM comes from the selected vehicle type.
+- The confirmed request shall store a unique order number for user, driver, and admin tracking.
 
 ### FR-MOVE-003 Driver Notification Broadcast
 - When a moving request is submitted, system shall notify all users with driver role.
@@ -268,6 +285,14 @@ The application contains:
 
 ### FR-MOVE-005 Admin Fallback Assignment
 - If no driver accepts a moving request, admin shall be able to assign the request to a specific verified driver.
+
+### FR-MOVE-007 Moving Status
+- Authenticated users shall open **Moving Status** to track their moving requests.
+- A user may have more than one moving request at the same time; the screen shall list all of the user’s requests and show full status for the selected request.
+- Active requests (Booked through Unloading) shall be listed above past requests (Completed and Cancelled).
+- For the selected request the user shall see current step, eight-step move progress, booking details (vehicle, inventory points, estimated price, assigned driver name/phone/license plate when assigned), and a link to request details.
+- Contact Driver shall open the assigned driver’s phone number. In-app chat is out of scope.
+- When the selected request is **Completed** and a driver is assigned, Moving Status shall let the user rate that driver with a 1 to 5 star control (FR-PROFILE-003).
 
 ## 7.7 Roommate Module
 ### FR-ROOM-001 Browse Roommates
@@ -291,14 +316,21 @@ The application contains:
   - Notifications
 - From booking history, the user shall open house details for a booking.
 - For a non-cancelled booking, house details shall provide **Cancel Booking**.
-
-### FR-PROFILE-003 Ratings and Reviews
-- User shall be able to submit reviews and ratings for agents and drivers.
+- History shall offer **Rate** (or **Update rating**) for a confirmed house booking and for a completed moving request that has an assigned driver (FR-PROFILE-003).
 
 ### FR-PROFILE-004 Logout
 - User shall be able to logout securely.
 
-## 7.9 Notifications
+## 7.9 Ratings and Reviews
+### FR-PROFILE-003 Ratings and Reviews
+- User shall be able to submit reviews and ratings for agents and drivers.
+- Ratings shall use a 1 to 5 star control (not a dropdown).
+- The user shall rate the listing agent after a confirmed house booking (house details, with History as a fallback).
+- The user shall rate the assigned driver after a moving request is completed (Moving Status, with History as a fallback).
+- One rating is stored per confirmed booking and per completed moving request. Submitting again updates that rating.
+- Profile is for personal account data only; ratings are not collected on the profile page.
+
+## 7.10 Notifications
 ### FR-NOTI-001 Notification Types
 - System shall notify users for:
   - Confirmed account registration
@@ -310,7 +342,7 @@ The application contains:
   - Driver status updates
   - System notifications
 
-## 7.10 Admin Portal
+## 7.11 Admin Portal
 ### FR-ADMIN-001 Agent Verification
 - Admin shall verify/reject housing agent registrations.
 
@@ -328,7 +360,7 @@ The application contains:
   - admin
 
 ### FR-ADMIN-005 Master Data Management
-- Admin shall manage required master data (examples: property type, cities/states, contract types, amenities set, vehicle types, status codes).
+- Admin shall manage required master data (examples: property type, cities/states, contract types, amenities set, vehicle types, floor levels, moving inventory items, status codes).
 
 ### FR-ADMIN-006 Reports
 - Admin shall view reports for operational and business metrics.
@@ -422,8 +454,14 @@ The application contains:
 - EV CHARGER
 
 ## 8.4 Moving Request Information
+### Stage 1 — Addresses
 - Pick up address
 - Drop off address
+
+### Stage 2 — Move details
+- Pick up address and drop off address (read-only from stage 1)
+- Pickup floor level (from master data)
+- Drop-off floor level (from master data)
 - Move in Date
 - Upload Pre-move cargo photos
   - Photo 1
@@ -479,7 +517,18 @@ The application contains:
 - Boxes
 
 - Remarks (text input)
-- Vehicle Type for Moving (from master data)
+
+### Stage 3 — Estimated price
+- Suggested Vehicle Type for Moving (from master data using inventory points)
+- Estimated price (MMK)
+- Confirm Booking
+
+### Stage 4 — Booking confirmation
+- Order number
+- Booker name, phone, and email
+- Notice that the driver may contact the user using those details
+
+- Vehicle Type for Moving is selected on stage 3 (not on stage 2)
 
 
 ## 8.5 Driver Registration Information
@@ -560,6 +609,7 @@ The application contains:
   - AGENT = listing agent
   - ADMIN = operational cancel if used; primary UI paths are USER and AGENT
 - The same user shall have at most one non-cancelled booking per house.
+- A confirmed booking shall have at most one agent rating (see §8.10).
 
 ## 8.9 Admin Master Data Objects
 The following reference data objects are identified as likely admin-managed master data based on the specification. These objects should support CRUD operations from the admin portal and be reusable across houses, moving requests, users, and reports.
@@ -601,6 +651,9 @@ The following reference data objects are identified as likely admin-managed mast
   - name (string, required, e.g. 10 ft, 12 ft, 14 ft, 16 ft)
   - capacityLabel (string, optional)
   - maxLoadKg (number, optional)
+  - pointFrom (number, optional, inclusive inventory-point range start)
+  - pointTo (number, optional, inclusive inventory-point range end)
+  - pricePerKm (number, optional, MMK per kilometer)
   - description (text, optional)
   - isActive (boolean, default true)
 
@@ -618,6 +671,7 @@ The following reference data objects are identified as likely admin-managed mast
   - id (UUID/string, unique, required)
   - name (string, required, e.g. Ground Floor, 1st Floor, 2nd Floor, Rooftop)
   - levelNumber (number, optional, e.g. 0 for Ground Floor through 20 for 20th Floor)
+  - surchargeAmount (number, required for moving quotes, MMK; Ground Floor = 0, 1st Floor = 5000, 2nd Floor = 10000, …)
   - description (text, optional)
   - isActive (boolean, default true)
 
@@ -653,6 +707,30 @@ The following reference data objects are identified as likely admin-managed mast
   - color (string, optional)
   - isActive (boolean, default true)
 
+### MD-012 Moving Inventory Item
+- Fields:
+  - id (UUID/string, unique, required)
+  - code (string, unique, required)
+  - category (string, required, e.g. bedroom, living, kitchen, office, other)
+  - itemName (string, required)
+  - points (number, required)
+  - sortOrder (number, optional)
+  - isActive (boolean, default true)
+- Purpose: Catalog of hire-moving inventory items with points used to suggest a vehicle type (`count * points`).
+
+## 8.10 Rating Review Record
+- id (UUID/string, unique, required)
+- reviewerUserId (reference to the signed-in user who submits the rating, required)
+- targetType (required, enum: AGENT, DRIVER)
+- targetUserId (reference to the rated agent or driver user, required; derived by the server)
+- rating (integer, required, 1 to 5)
+- comment (string, optional, max 1000 characters)
+- bookingId (optional, unique; required when rating an agent; must be the reviewer’s **Confirmed** house booking)
+- movingRequestId (optional, unique; required when rating a driver; must be the reviewer’s **Completed** moving request with an assigned driver)
+- Exactly one of bookingId or movingRequestId shall be set.
+- The server shall set targetType and targetUserId from the booking’s listing agent or the moving request’s assigned driver. Clients shall not paste a target user id.
+- One rating per confirmed booking and per completed moving request. Submitting again updates that record.
+
 ---
 
 ## 9. Business Rules
@@ -674,10 +752,15 @@ The following reference data objects are identified as likely admin-managed mast
 16. House availability is not changed automatically by booking; if the house is actually rented, the agent changes availability manually.
 17. Roommate post requires authenticated user.
 18. Wishlist requires authenticated user.
-19. On moving request submission, system sends notification to all verified drivers.
+19. On moving request submission, system sends notification to all verified drivers. The request status is **Booked**.
 20. The first driver who accepts a moving request is assigned to that request and status changes to **Accepted**.
 21. Once a moving request is **Accepted**, other drivers cannot accept the same request.
-22. If no driver accepts a request, admin can manually assign it to a specific verified driver.
+22. If no driver accepts a request, admin can manually assign it to a specific verified driver and status changes to **Assigned**.
+23. Hire Moving Service uses a four-stage wizard. The moving request is persisted only when the user confirms booking.
+24. Estimated moving price = pickup floor surcharge + drop-off floor surcharge + (selected vehicle PricePerKM × distance in kilometers). Floor surcharges and PricePerKM come from master data. Distance is calculated from geocoded pickup and drop-off addresses.
+25. Each confirmed moving request receives a unique order number for tracking by the user, driver, and admin.
+26. A user may confirm more than one moving request. Moving Status lists all of that user’s requests and tracks the selected request through the §10.5 statuses.
+27. Ratings use a 1 to 5 star control. The booking user may rate the listing agent after a **Confirmed** house booking, and the requester may rate the assigned driver after a **Completed** moving request. One rating per booking or moving request; submitting again updates it. Ratings are not collected on the Profile page.
 
 ---
 
@@ -708,6 +791,7 @@ The following reference data objects are identified as likely admin-managed mast
 11. The system records whether cancellation was performed by the listing agent or the booking user.
 12. Further communication between agent and booking user is outside the system.
 13. If the house is actually rented, the agent changes that house’s availability manually in the system.
+14. After the booking is **Confirmed**, the booking user may rate the listing agent with 1 to 5 stars on house details (History is a fallback). The confirmation page does not collect the rating.
 
 ### 10.3.1 House Booking Status Definitions
 1. **Confirmed**
@@ -720,36 +804,56 @@ The following reference data objects are identified as likely admin-managed mast
 - Not used when creating a booking on the current workflow.
 
 ## 10.4 Moving Job Lifecycle
-1. User submits moving request.
-2. System notifies all verified drivers.
-3. Drivers review request and accept/reject.
-4. First accepting driver is assigned automatically and request status changes to **Accepted**.
-5. Other drivers can no longer accept that request.
-6. If no driver accepts, admin assigns request to a specific verified driver.
-7. Assigned driver enters stage ETAs.
-8. Assigned driver updates delivery status.
-9. Completion notification is sent to user.
+1. User opens Hire Moving Service and completes the four-stage wizard (addresses → details/inventory → estimated price → confirmation).
+2. System quotes estimated price and suggested vehicle type, then persists the request with an order number when the user confirms booking. Status is **Booked**.
+3. System notifies all verified drivers.
+4. Drivers review request and accept/reject.
+5. First accepting driver is assigned automatically and request status changes to **Accepted**.
+6. Other drivers can no longer accept that request.
+7. If no driver accepts, admin assigns request to a specific verified driver and status changes to **Assigned**.
+8. Assigned driver enters stage ETAs for the operational steps.
+9. Assigned driver updates delivery status in order: Driver Coming, Driver Arrived, Loading, On the Way, Unloading, Completed.
+10. The requester tracks each booking on **Moving Status** and can switch among multiple requests.
+11. Completion notification is sent to user.
+12. After status is **Completed**, the requester may rate the assigned driver with 1 to 5 stars on Moving Status (History is a fallback).
 
 ## 10.5 Moving Request Status Definitions
-1. **Pending**
-- Initial status after user submits moving request.
+1. **Booked**
+- Initial status immediately after the user confirms a moving booking.
 - Request is open and visible to all verified drivers.
 
 2. **Accepted**
 - Set automatically when the first verified driver accepts the request.
 - Request is locked from acceptance by other drivers.
+- On Moving Status, Accepted and Assigned share the **Driver Assigned** timeline step.
 
 3. **Assigned**
 - Set when admin manually assigns a request to a specific verified driver because no driver accepted.
+- On Moving Status, Assigned uses the same **Driver Assigned** timeline step as Accepted.
 
-4. **In Progress**
-- Set when assigned driver starts the moving operation.
+4. **Driver Coming**
+- Set when the assigned driver starts traveling to the pickup location.
 
-5. **Completed**
+5. **Driver Arrived**
+- Set when the assigned driver has arrived at the pickup location.
+
+6. **Loading**
+- Set when belongings are being loaded onto the vehicle.
+
+7. **On the Way**
+- Set when belongings are being transported to the drop-off location.
+
+8. **Unloading**
+- Set when belongings are being unloaded at the destination.
+
+9. **Completed**
 - Set when moving and delivery are finished successfully.
+- Driver may set Completed only from Unloading.
+- The requester may then rate the assigned driver (FR-PROFILE-003).
 
-6. **Cancelled**
-- Set when request is cancelled by admin or requester before completion.
+10. **Cancelled**
+- Set when the request is cancelled by admin, requester, or assigned driver before completion.
+- Cancelled is not a step on the eight-step progress timeline.
 
 ---
 
@@ -823,8 +927,9 @@ The first release is accepted when:
 7. Verified drivers can process assigned moving jobs and update statuses.
 8. Roommate browse/post workflows are functional.
 9. Profile, wishlist, notifications, and histories are functional.
-10. Admin can verify users, manage roles/master data, and view reports.
-11. Required data fields and validation rules are implemented according to this specification.
+10. Users can rate listing agents after a confirmed house booking and assigned drivers after a completed move, using 1 to 5 stars (not on Profile).
+11. Admin can verify users, manage roles/master data, and view reports.
+12. Required data fields and validation rules are implemented according to this specification.
 
 ---
 
@@ -833,7 +938,7 @@ The first release is accepted when:
 2. Exact report layouts and export formats (PDF/Excel/CSV).
 3. Whether payment collection is in-scope for first release.
 4. Whether agent-driver direct communication is required (agent–booking-user communication is out of scope).
-5. Final status values for **moving** lifecycle states.
+5. Moving lifecycle statuses are defined in §10.5 (Booked, Accepted, Assigned, Driver Coming, Driver Arrived, Loading, On the Way, Unloading, Completed, Cancelled).
 6. House booking statuses for the current workflow are **Confirmed** on submit and **Cancelled** on cancel; **Pending** remains for legacy/admin filter only.
 
 ---
@@ -846,10 +951,10 @@ The `backend-api/` project implements the server-side scope of this specificatio
 - Versioned API under `/api/v1`
 - Public home feed: featured listings, popular houses, verified agents, partner drivers, service reviews
 - Public master-data reads for dropdown/filter values (active records only)
-- Prisma seed includes §8.3 / MD-009 amenities (`AIR CONDITIONER` … `EV CHARGER`) with General/Building/Utility categories, MD-007 floor levels (Ground Floor / `0` through 20th Floor / `20`), plus roles, status codes, Yangon locations, property types, vehicle types, and admin user
+- Prisma seed includes §8.3 / MD-009 amenities (`AIR CONDITIONER` … `EV CHARGER`) with General/Building/Utility categories, MD-007 floor levels (Ground Floor / `0` through 20th Floor / `20` with surchargeAmount), MD-012 moving inventory items with placeholder points, vehicle types with point ranges and PricePerKM, plus roles, status codes, Yangon locations, property types, and admin user
 - Self-service agent and driver registration via `/registrations/*` (assigns role, creates profile, sets verification to pending)
 - Booking lifecycle with confirm/cancel status updates (current code still creates bookings as PENDING and uses a moving upsell dialog; SRS v1.1 house booking workflow is specified ahead of implementation)
-- Moving requests include `estimatedEarnings` for driver job visibility (FR-DRIVER-005)
+- Moving requests include `estimatedPrice` (customer quote) and `estimatedEarnings` (driver job visibility, FR-DRIVER-005), plus `orderNumber`. Create status is `BOOKED`. Requesters list their bookings with `GET /moving/requests` and track them on Moving Status (FR-MOVE-007).
 - Admin reports support optional `from` and `to` query parameters for period filtering
 - MD-010 Role master data managed at `/admin/master-data/roles`
 
@@ -869,7 +974,7 @@ The `backend-api/` project implements the server-side scope of this specificatio
 The `frontend-app/` project is an independent Vite + React + TypeScript application that consumes `backend-api` over `/api/v1`.
 
 ### Scaffold baseline (frontend-api-starter)
-- Public portal shell with header + sub-nav routes: Home, About Us, Agent Register, Sign Up, Sign In, Finding House, Hire Moving Service, Finding Roommates
+- Public portal shell with header + sub-nav routes: Home, About Us, Agent Register, Sign Up, Sign In, Finding House, Hire Moving Service, Moving Status, Finding Roommates
 - Admin portal shell with JWT register/login and `/auth/verify` guarded routes under `/admin`
 - Providers: Theme → I18n → React Query → Auth → Router
 - English/Myanmar locale files and light/dark/system theme toggle
@@ -893,17 +998,19 @@ The `frontend-app/` project is an independent Vite + React + TypeScript applicat
 - **FR-AGENT-001**: Agent Register form matches §8.6 fields and posts to `POST /registrations/agent` (auth required; unauthenticated users redirected to sign-in). NRC photo fields accept path/file-name placeholders (no binary upload in this increment).
 
 ### Increment B implemented (moving, driver, roommates, profile, driver jobs)
-- **FR-MOVE-001..002 / FR-HOUSE-005**: `/hire-moving` is a full auth-gated moving request form (§8.4 inventory categories, vehicle types from `GET /master-data/vehicle-types`, photo path strings). Submits `POST /moving/requests`; success links to `/hire-moving/:id` via `GET /moving/requests/:id`. Booking upsell query context (`bookingId`/`houseId`) is displayed when present (not part of the create body).
+- **FR-MOVE-001..002 / FR-MOVE-006 / FR-HOUSE-005**: `/hire-moving` is an auth-gated four-stage wizard. Stage 1 Yangon township + street/landmark + map pins; stage 2 remaining §8.4 fields except vehicle type plus pickup/drop-off floors; `POST /moving/quote` (uses pin coordinates when present) then stage 3 estimated price; Confirm Booking `POST /moving/requests` (server recomputes quote, stores `orderNumber`, status `BOOKED`); stage 4 confirmation. Detail via `GET /moving/requests/:id`. Booking upsell query context (`bookingId`/`houseId`) is displayed when present (not part of the create body).
+- **FR-MOVE-007**: `/moving-status` lists the requester’s moving requests (`GET /moving/requests`) and shows the eight-step timeline for the selected booking (`GET /moving/requests/:id`, deep link `/moving-status/:id`). Multiple concurrent bookings are allowed.
 - **FR-DRIVER-001**: `/driver-register` posts §8.5 fields to `POST /registrations/driver` (auth required; document/image path placeholders). Linked from the profile menu.
 - **FR-ROOM-001..002**: `/finding-roommates` browses `GET /roommates` with gender/occupation/city/state filters. Authenticated users can post via `POST /roommates` using occupations from master data and houses from `GET /houses` as the housing select source.
-- **FR-PROFILE-001..003 / FR-NOTI-001 UI**: `/profile` supports `GET/PATCH /profile` and `PATCH /profile/change-password`; reviews via `POST /reviews` (target user id + AGENT/DRIVER). `/profile/wishlist` uses `GET /wishlist`. `/profile/history` uses `GET /profile/history`. Header notifications continue to mark read with `PATCH /notifications/:id/read`.
-- **FR-DRIVER-003..006**: Driver-role users get `/driver/jobs` against `GET /driver/requests/available`, accept/reject, and job detail actions for ETA (`POST .../eta`) and status (`POST .../status` with `in_progress|completed|cancelled`). Job detail also uses `GET /moving/requests/:id` for full FR-DRIVER-005 fields.
+- **FR-PROFILE-001 / FR-PROFILE-004 / FR-NOTI-001 UI**: `/profile` supports `GET/PATCH /profile` and `PATCH /profile/change-password`. `/profile/wishlist` uses `GET /wishlist`. `/profile/history` uses `GET /profile/history`. Header notifications continue to mark read with `PATCH /notifications/:id/read`.
+- **FR-PROFILE-003**: Ratings use 1–5 stars on Moving Status (completed driver jobs), House details (confirmed bookings), and History. `POST /reviews` upserts by `bookingId` or `movingRequestId`. Profile no longer collects reviews.
+- **FR-DRIVER-003..006**: Driver-role users get `/driver/jobs` against `GET /driver/requests/available`, accept/reject, and job detail actions for ETA (`POST .../eta`) and status (`POST .../status` with sequential `driver_coming|driver_arrived|loading|on_the_way|unloading|completed|cancelled`). Job detail also uses `GET /moving/requests/:id` for full FR-DRIVER-005 fields.
 
 ### Increment C implemented (admin portal)
 - **FR-ADMIN-001..002**: `/admin/verifications` provides agent and driver verification forms (`PATCH /admin/agents/:userId/verification`, `PATCH /admin/drivers/:userId/verification`) with status actions `pending|approve|reject`. Pending/verified/rejected counts are surfaced from `GET /admin/reports/overview`.
 - **FR-ADMIN-003..004**: `/admin/users` supports create-user (`POST /admin/users`) and role assignment (`PATCH /admin/users/:id/roles`) for `normal|agent|driver|admin`.
 - **FR-MOVE-005 / admin assign**: `/admin/moving-assign` posts `POST /admin/moving/requests/:id/assign` with `driverUserId`.
-- **FR-ADMIN-005 / MD-001..011**: `/admin/master-data` indexes all entities; `/admin/master-data/:entity` provides list/create/edit and DELETE soft-deactivate against `/admin/master-data/*`.
+- **FR-ADMIN-005 / MD-001..012**: `/admin/master-data` indexes all entities; `/admin/master-data/:entity` provides list/create/edit and DELETE soft-deactivate against `/admin/master-data/*`.
 - **FR-ADMIN-006**: `/admin/dashboard` summary cards and `/admin/reports` period filters (`from`/`to`) consume `GET /admin/reports/overview` (registrations, verification, housing, bookings, moving, top performers).
 - Admin layout nav: Dashboard, Verifications, Users, Moving Assign, Master Data, Reports. `AdminAuthGuard` continues to require `admin` role.
 
@@ -923,7 +1030,7 @@ The `frontend-app/` project is an independent Vite + React + TypeScript applicat
 ### Intentional choices / deferred
 - Moving create body does not send `bookingId`/`houseId` because the backend create contract does not accept them; deep-link context is UI-only.
 - Roommate housing select uses public `GET /houses` list (practical substitute until a dedicated “my houses / bookable houses” endpoint exists).
-- Driver assigned-job listing is not exposed by the backend; workspace focuses on available PENDING requests plus detail-by-id after accept. Gap: no `GET /driver/requests/assigned` (or equivalent) for post-accept job inbox.
+- Driver assigned-job listing is not exposed by the backend; workspace focuses on available BOOKED requests plus detail-by-id after accept. Gap: no `GET /driver/requests/assigned` (or equivalent) for post-accept job inbox.
 - **Intentional backend limitation (Increment C):** There is no admin list/queue endpoint for pending agents, pending drivers, users, or unassigned moving requests. Admin UX uses userId/requestId entry forms and reports overview counts instead of selectable queues. A future backend increment can add list endpoints without changing the action APIs already wired.
 - **Intentional gaps retained after Increment E:** no admin selectable list queues; no report export (PDF/Excel/CSV); email/SMS notification channels remain future scope; cloud object storage remains future scope.
 - **SRS v1.1 house booking workflow (specified, not yet implemented):** dedicated confirmation page; status Confirmed on submit; duplicate active-booking prevention; agent notification and booking list with booker details; user/agent cancel with cancelled-by tracking; dedicated admin house booking report (FR-ADMIN-007). Current app still uses PENDING on create and a moving upsell dialog.

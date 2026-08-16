@@ -14,6 +14,8 @@ import { HouseDetailsPage } from '@/features/houses/pages/HouseDetailsPage'
 import { BookingConfirmationPage } from '@/features/houses/pages/BookingConfirmationPage'
 import { HireMovingPage } from '@/features/moving/pages/HireMovingPage'
 import { MovingRequestDetailPage } from '@/features/moving/pages/MovingRequestDetailPage'
+import { MovingStatusListPage } from '@/features/moving/pages/MovingStatusListPage'
+import { MovingStatusPage } from '@/features/moving/pages/MovingStatusPage'
 import { HistoryPage } from '@/features/profile/pages/HistoryPage'
 import { ProfilePage } from '@/features/profile/pages/ProfilePage'
 import { WishlistPage } from '@/features/profile/pages/WishlistPage'
@@ -40,6 +42,8 @@ export const publicRoutes: RouteObject = {
     { path: 'houses/:id/bookings/:bookingId/confirmation', element: <BookingConfirmationPage /> },
     { path: 'hire-moving', element: <HireMovingPage /> },
     { path: 'hire-moving/:id', element: <MovingRequestDetailPage /> },
+    { path: 'moving-status', element: <MovingStatusListPage /> },
+    { path: 'moving-status/:id', element: <MovingStatusPage /> },
     { path: 'finding-roommates', element: <FindingRoommatesPage /> },
     { path: 'profile', element: <ProfilePage /> },
     { path: 'profile/wishlist', element: <WishlistPage /> },

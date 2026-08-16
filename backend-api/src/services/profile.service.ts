@@ -1,5 +1,6 @@
 import { prisma } from '../prisma/client';
 import { ApiError } from '../utils/api-error';
+import { toMyReview } from './review.service';
 
 interface UpdateProfileInput {
   name?: string;
@@ -92,6 +93,7 @@ export const getMyProfileHistory = async (userId: string) => {
             id: true,
             title: true,
             availability: true,
+            agentId: true,
             city: {
               select: {
                 id: true,
@@ -103,7 +105,21 @@ export const getMyProfileHistory = async (userId: string) => {
                 id: true,
                 name: true
               }
+            },
+            agent: {
+              select: {
+                id: true,
+                name: true
+              }
             }
+          }
+        },
+        ratingReview: {
+          select: {
+            id: true,
+            rating: true,
+            comment: true,
+            reviewerUserId: true
           }
         }
       },
@@ -127,6 +143,14 @@ export const getMyProfileHistory = async (userId: string) => {
             id: true,
             name: true,
             phone: true
+          }
+        },
+        ratingReview: {
+          select: {
+            id: true,
+            rating: true,
+            comment: true,
+            reviewerUserId: true
           }
         }
       },
@@ -157,8 +181,20 @@ export const getMyProfileHistory = async (userId: string) => {
   ]);
 
   return {
-    bookingHistory,
-    movingHistory,
+    bookingHistory: bookingHistory.map((booking) => {
+      const { ratingReview, ...rest } = booking;
+      return {
+        ...rest,
+        myReview: toMyReview(ratingReview, userId)
+      };
+    }),
+    movingHistory: movingHistory.map((item) => {
+      const { ratingReview, ...rest } = item;
+      return {
+        ...rest,
+        myReview: toMyReview(ratingReview, userId)
+      };
+    }),
     notifications: {
       total: totalNotificationCount,
       unread: unreadNotificationCount,

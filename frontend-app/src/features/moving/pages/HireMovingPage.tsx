@@ -1,49 +1,55 @@
 import { useQuery } from '@tanstack/react-query'
-import { type ReactNode, useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router'
 import { useTranslation } from 'react-i18next'
 
 import { useAuth } from '@/app/providers/AuthProvider'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { MultiImageUploadField } from '@/components/uploads/MultiImageUploadField'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { masterDataApi } from '@/features/master-data/api/master-data-api'
+import { parseCoordinatePair } from '@/features/houses/lib/geocode-location'
 import { ApiRequestError } from '@/lib/api/client'
 
+import { yangonTownships } from '../lib/moving-location'
 import { movingApi } from '../api/moving-api'
-import {
-  emptyInventoryCounts,
-  INVENTORY_CATEGORY_ORDER,
-  MOVING_INVENTORY_CATALOG,
-} from '../constants/inventory-catalog'
+import { HireMovingStepAddresses } from '../components/HireMovingStepAddresses'
+import { HireMovingStepConfirmation } from '../components/HireMovingStepConfirmation'
+import { HireMovingStepDetails } from '../components/HireMovingStepDetails'
+import { HireMovingStepEstimate } from '../components/HireMovingStepEstimate'
+import { HireMovingStepProgress } from '../components/HireMovingStepProgress'
+import { emptyInventoryCounts, type InventoryCatalogItem } from '../constants/inventory-catalog'
 import {
   buildInventoryItems,
   collectPhotoPaths,
   sumInventoryCounts,
-  validateMovingRequestForm,
+  validateMovingStep1,
+  validateMovingStep2,
+  validateMovingStep3,
   type MovingRequestFormValues,
 } from '../schemas/moving-request-schema'
+import type { MovingQuote } from '../types'
 
-const selectClassName =
-  'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
-
-const textareaClassName =
-  'flex min-h-20 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+function parseStep(value: string | null): 1 | 2 | 3 | 4 {
+  const parsed = Number(value ?? '1')
+  if (parsed === 2 || parsed === 3 || parsed === 4) return parsed
+  return 1
+}
 
 export function HireMovingPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
-  const [searchParams] = useSearchParams()
-  const { isAuthenticated, isBootstrapping } = useAuth()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const { isAuthenticated, isBootstrapping, user } = useAuth()
   const [formError, setFormError] = useState<string | null>(null)
   const [createdRequestId, setCreatedRequestId] = useState<string | null>(null)
+  const [createdOrderNumber, setCreatedOrderNumber] = useState<string | null>(null)
+  const [quote, setQuote] = useState<MovingQuote | null>(null)
+  const [isQuoting, setIsQuoting] = useState(false)
 
   const bookingId = searchParams.get('bookingId') ?? undefined
   const houseId = searchParams.get('houseId') ?? undefined
+  const step = parseStep(searchParams.get('step'))
 
   useEffect(() => {
     if (!isBootstrapping && !isAuthenticated) {
@@ -54,11 +60,42 @@ export function HireMovingPage() {
     }
   }, [isAuthenticated, isBootstrapping, location.pathname, location.search, navigate])
 
+  const inventoryQuery = useQuery({
+    queryKey: ['master-data', 'moving-inventory-items'],
+    enabled: isAuthenticated,
+    queryFn: () => masterDataApi.list('moving-inventory-items'),
+  })
+  const floorsQuery = useQuery({
+    queryKey: ['master-data', 'floor-levels'],
+    enabled: isAuthenticated,
+    queryFn: () => masterDataApi.list('floor-levels'),
+  })
   const vehiclesQuery = useQuery({
     queryKey: ['master-data', 'vehicle-types'],
     enabled: isAuthenticated,
     queryFn: () => masterDataApi.list('vehicle-types'),
   })
+  const citiesQuery = useQuery({
+    queryKey: ['master-data', 'cities'],
+    enabled: isAuthenticated,
+    queryFn: () => masterDataApi.list('cities'),
+  })
+
+  const townships = useMemo(
+    () => yangonTownships(citiesQuery.data?.items ?? []),
+    [citiesQuery.data?.items],
+  )
+  const townshipNames = useMemo(() => townships.map((item) => item.name), [townships])
+
+  const catalog: InventoryCatalogItem[] = useMemo(() => {
+    return (inventoryQuery.data?.items ?? []).map((item) => ({
+      id: item.id,
+      code: item.code ?? item.id,
+      category: item.category ?? 'other',
+      itemName: item.itemName ?? item.name ?? item.id,
+      points: Number(item.points ?? 0),
+    }))
+  }, [inventoryQuery.data?.items])
 
   const {
     register,
@@ -73,6 +110,16 @@ export function HireMovingPage() {
     defaultValues: {
       pickupAddress: '',
       dropoffAddress: '',
+      pickupStreet: '',
+      dropoffStreet: '',
+      pickupTownship: '',
+      dropoffTownship: '',
+      pickupLatitude: '',
+      pickupLongitude: '',
+      dropoffLatitude: '',
+      dropoffLongitude: '',
+      pickupFloorLevelId: '',
+      dropoffFloorLevelId: '',
       moveInDate: '',
       vehicleTypeId: '',
       remarks: '',
@@ -83,9 +130,17 @@ export function HireMovingPage() {
       photo4: '',
       photo5: '',
       totalInventoryItems: '0',
-      inventoryCounts: emptyInventoryCounts(),
+      inventoryCounts: {},
     },
   })
+
+  useEffect(() => {
+    if (catalog.length === 0) return
+    const current = getValues('inventoryCounts')
+    const next = { ...emptyInventoryCounts(catalog), ...current }
+    setValue('inventoryCounts', next)
+    setValue('totalInventoryItems', String(sumInventoryCounts(next)))
+  }, [catalog, getValues, setValue])
 
   const inventoryCounts = watch('inventoryCounts')
   const photo1 = watch('photo1')
@@ -93,10 +148,30 @@ export function HireMovingPage() {
   const photo3 = watch('photo3')
   const photo4 = watch('photo4')
   const photo5 = watch('photo5')
+  const pickupAddress = watch('pickupAddress')
+  const dropoffAddress = watch('dropoffAddress')
+  const vehicleTypeId = watch('vehicleTypeId')
   const photoPaths = useMemo(
     () => [photo1, photo2, photo3, photo4, photo5].map((path) => path.trim()).filter(Boolean),
     [photo1, photo2, photo3, photo4, photo5],
   )
+
+  const setStep = (next: 1 | 2 | 3 | 4) => {
+    const params = new URLSearchParams(searchParams)
+    params.set('step', String(next))
+    setSearchParams(params)
+  }
+
+  const applyFieldErrors = (validationErrors: Record<string, string | undefined>) => {
+    Object.entries(validationErrors).forEach(([key, message]) => {
+      if (!message) return
+      if (key === 'photos') {
+        setError('photo1', { type: 'validate', message })
+        return
+      }
+      setError(key as keyof MovingRequestFormValues, { type: 'validate', message })
+    })
+  }
 
   const syncPhotoPaths = (paths: string[]) => {
     setValue('photo1', paths[0] ?? '', { shouldDirty: true, shouldTouch: true })
@@ -109,8 +184,8 @@ export function HireMovingPage() {
     }
   }
 
-  const updateInventoryCount = (key: string, next: number) => {
-    const current = { ...getValues('inventoryCounts'), [key]: next }
+  const updateInventoryCount = (id: string, next: number) => {
+    const current = { ...getValues('inventoryCounts'), [id]: next }
     setValue('inventoryCounts', current, { shouldDirty: true })
     const sum = sumInventoryCounts(current)
     setValue('totalInventoryItems', String(sum), { shouldDirty: true, shouldTouch: true })
@@ -119,55 +194,110 @@ export function HireMovingPage() {
     }
   }
 
-  const catalogByCategory = useMemo(() => {
-    return INVENTORY_CATEGORY_ORDER.map((category) => ({
-      category,
-      items: MOVING_INVENTORY_CATALOG.filter((item) => item.category === category),
+  const requestQuote = async (selectedVehicleTypeId?: string) => {
+    const values = getValues()
+    const pickup = parseCoordinatePair(values.pickupLatitude, values.pickupLongitude)
+    const dropoff = parseCoordinatePair(values.dropoffLatitude, values.dropoffLongitude)
+    const inventoryItems = buildInventoryItems(values.inventoryCounts, catalog).map((item) => ({
+      inventoryItemTypeId: item.inventoryItemTypeId,
+      count: item.count,
     }))
-  }, [])
+    setIsQuoting(true)
+    setFormError(null)
+    try {
+      const result = await movingApi.quote({
+        pickupAddress: values.pickupAddress.trim(),
+        dropoffAddress: values.dropoffAddress.trim(),
+        pickupLatitude: pickup?.lat,
+        pickupLongitude: pickup?.lng,
+        dropoffLatitude: dropoff?.lat,
+        dropoffLongitude: dropoff?.lng,
+        pickupFloorLevelId: values.pickupFloorLevelId,
+        dropoffFloorLevelId: values.dropoffFloorLevelId,
+        vehicleTypeId: selectedVehicleTypeId || undefined,
+        inventoryItems,
+      })
+      setQuote(result.quote)
+      setValue('vehicleTypeId', result.quote.selectedVehicleType.id)
+      return result.quote
+    } catch (error) {
+      if (error instanceof ApiRequestError) {
+        setFormError(error.message)
+      } else {
+        setFormError(t('moving.quoteFailed'))
+      }
+      return null
+    } finally {
+      setIsQuoting(false)
+    }
+  }
 
   const onSubmit = handleSubmit(async (values) => {
     clearErrors()
-    // Nested inventory counts are controlled via setValue; read latest for submit/validation.
-    const inventoryCountsLatest = getValues('inventoryCounts')
-    const totalInventoryItems = getValues('totalInventoryItems')
+    setFormError(null)
     const merged: MovingRequestFormValues = {
       ...values,
-      inventoryCounts: inventoryCountsLatest,
-      totalInventoryItems,
+      inventoryCounts: getValues('inventoryCounts'),
+      totalInventoryItems: getValues('totalInventoryItems'),
     }
 
-    const validationErrors = validateMovingRequestForm(merged, t)
-    const keys = Object.keys(validationErrors) as Array<keyof typeof validationErrors>
-    if (keys.length > 0) {
-      keys.forEach((key) => {
-        const message = validationErrors[key]
-        if (!message) return
-        if (key === 'photos') {
-          setError('photo1', { type: 'validate', message })
-          return
-        }
-        setError(key as keyof MovingRequestFormValues, { type: 'validate', message })
-      })
+    if (step === 1) {
+      const stepErrors = validateMovingStep1(merged, t, townshipNames)
+      if (Object.keys(stepErrors).length > 0) {
+        applyFieldErrors(stepErrors)
+        return
+      }
+      setStep(2)
       return
     }
 
-    setFormError(null)
-    setCreatedRequestId(null)
+    if (step === 2) {
+      const stepErrors = validateMovingStep2(merged, t)
+      if (Object.keys(stepErrors).length > 0) {
+        applyFieldErrors(stepErrors)
+        return
+      }
+      const nextQuote = await requestQuote()
+      if (!nextQuote) return
+      setStep(3)
+      return
+    }
 
-    const total = Math.floor(Number(merged.totalInventoryItems))
+    if (step !== 3) return
+
+    const step3Errors = validateMovingStep3(merged, t)
+    if (Object.keys(step3Errors).length > 0) {
+      applyFieldErrors(step3Errors)
+      return
+    }
+
+    const inventoryItems = buildInventoryItems(merged.inventoryCounts, catalog).map((item) => ({
+      inventoryItemTypeId: item.inventoryItemTypeId,
+      count: item.count,
+    }))
+
     try {
+      const pickup = parseCoordinatePair(merged.pickupLatitude, merged.pickupLongitude)
+      const dropoff = parseCoordinatePair(merged.dropoffLatitude, merged.dropoffLongitude)
       const result = await movingApi.create({
         pickupAddress: merged.pickupAddress.trim(),
         dropoffAddress: merged.dropoffAddress.trim(),
+        pickupLatitude: pickup?.lat,
+        pickupLongitude: pickup?.lng,
+        dropoffLatitude: dropoff?.lat,
+        dropoffLongitude: dropoff?.lng,
+        pickupFloorLevelId: merged.pickupFloorLevelId,
+        dropoffFloorLevelId: merged.dropoffFloorLevelId,
         moveInDate: new Date(merged.moveInDate).toISOString(),
         vehicleTypeId: merged.vehicleTypeId,
         remarks: merged.remarks.trim() || undefined,
         damageChecklist: merged.damageChecklist.trim() || undefined,
         photos: collectPhotoPaths(merged),
-        inventoryItems: buildInventoryItems(merged.inventoryCounts, total),
+        inventoryItems,
       })
       setCreatedRequestId(result.movingRequest.id)
+      setCreatedOrderNumber(result.movingRequest.orderNumber ?? result.movingRequest.id)
+      setStep(4)
     } catch (error) {
       if (error instanceof ApiRequestError) {
         setFormError(error.message)
@@ -181,36 +311,16 @@ export function HireMovingPage() {
     return <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
   }
 
-  if (createdRequestId) {
-    return (
-      <Card className="mx-auto max-w-2xl">
-        <CardHeader>
-          <CardTitle>
-            <h1 className="text-2xl">{t('moving.successTitle')}</h1>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">{t('moving.successMessage')}</p>
-          <div className="flex flex-wrap gap-2">
-            <Button asChild>
-              <Link to={`/hire-moving/${createdRequestId}`}>{t('moving.viewRequest')}</Link>
-            </Button>
-            <Button asChild variant="outline">
-              <Link to="/">{t('nav.home')}</Link>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    )
-  }
+  const showConfirmation = step === 4 && Boolean(createdRequestId)
 
   return (
-    <Card className="mx-auto max-w-4xl">
+    <Card className="mx-auto max-w-6xl">
       <CardHeader>
-        <CardTitle>
-          <h1 className="text-2xl">{t('nav.hireMoving')}</h1>
-        </CardTitle>
-        <p className="text-sm text-muted-foreground">{t('moving.subtitle')}</p>
+        <div className="space-y-2 text-center">
+          <h1 className="text-3xl font-semibold tracking-tight">{t('moving.sloganTitle')}</h1>
+          <p className="text-muted-foreground">{t('moving.sloganSubtitle')}</p>
+        </div>
+        <HireMovingStepProgress current={step} />
         {(bookingId || houseId) && (
           <p className="text-xs text-muted-foreground">
             {t('moving.bookingContext', {
@@ -221,133 +331,79 @@ export function HireMovingPage() {
         )}
       </CardHeader>
       <CardContent>
-        <form className="space-y-6" onSubmit={onSubmit} noValidate>
-          <input type="hidden" {...register('photo1')} />
-          <input type="hidden" {...register('photo2')} />
-          <input type="hidden" {...register('photo3')} />
-          <input type="hidden" {...register('photo4')} />
-          <input type="hidden" {...register('photo5')} />
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label={t('moving.pickupAddress')} error={errors.pickupAddress?.message} className="sm:col-span-2">
-              <Input {...register('pickupAddress')} />
-            </Field>
-            <Field label={t('moving.dropoffAddress')} error={errors.dropoffAddress?.message} className="sm:col-span-2">
-              <Input {...register('dropoffAddress')} />
-            </Field>
-            <Field label={t('moving.moveInDate')} error={errors.moveInDate?.message}>
-              <Input type="date" {...register('moveInDate')} />
-            </Field>
-            
-            <Field label={t('moving.damageChecklist')} error={errors.damageChecklist?.message} className="sm:col-span-2">
-              <textarea className={textareaClassName} {...register('damageChecklist')} />
-            </Field>
-            <Field label={t('moving.remarks')} error={errors.remarks?.message} className="sm:col-span-2">
-              <textarea className={textareaClassName} {...register('remarks')} />
-            </Field>
-          </div>
-
-          <section className="space-y-3">
-            <h2 className="text-lg font-medium">{t('moving.photosTitle')}</h2>
-            <p className="text-sm text-muted-foreground">{t('moving.photosHint')}</p>
-            <MultiImageUploadField
-              paths={photoPaths}
-              onChange={syncPhotoPaths}
-              category="moving"
-              maxFiles={5}
-              error={errors.photo1?.message}
-            />
-          </section>
-
-          <section className="space-y-4">
-            <div>
-              <h2 className="text-lg font-medium">{t('moving.inventoryTitle')}</h2>
-              <p className="text-sm text-muted-foreground">{t('moving.inventoryHint')}</p>
-            </div>
-
-            {catalogByCategory.map(({ category, items }) => (
-              <div key={category} className="space-y-2 rounded-md border p-4">
-                <h3 className="font-medium">{t(`moving.categories.${category}`)}</h3>
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {items.map((item) => (
-                    <label key={item.key} className="flex items-center justify-between gap-2 text-sm">
-                      <span>{item.itemName}</span>
-                      <Input
-                        type="number"
-                        min={0}
-                        className="w-20"
-                        value={inventoryCounts[item.key] ?? 0}
-                        onChange={(event) => {
-                          const next = Math.max(0, Number(event.target.value) || 0)
-                          updateInventoryCount(item.key, next)
-                        }}
-                      />
-                    </label>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </section>
-
-          <Field
-            label={t('moving.totalInventoryItems')}
-            error={errors.totalInventoryItems?.message}
-            className="max-w-xs"
-          >
+        {showConfirmation && createdRequestId ? (
+          <HireMovingStepConfirmation
+            orderNumber={createdOrderNumber ?? createdRequestId}
+            requestId={createdRequestId}
+            userName={user?.name ?? ''}
+            userPhone={user?.phone}
+            userEmail={user?.email}
+          />
+        ) : (
+          <form className="space-y-6" onSubmit={onSubmit} noValidate>
+            <input type="hidden" {...register('pickupAddress')} />
+            <input type="hidden" {...register('dropoffAddress')} />
+            <input type="hidden" {...register('pickupLatitude')} />
+            <input type="hidden" {...register('pickupLongitude')} />
+            <input type="hidden" {...register('dropoffLatitude')} />
+            <input type="hidden" {...register('dropoffLongitude')} />
+            <input type="hidden" {...register('photo1')} />
+            <input type="hidden" {...register('photo2')} />
+            <input type="hidden" {...register('photo3')} />
+            <input type="hidden" {...register('photo4')} />
+            <input type="hidden" {...register('photo5')} />
             <input type="hidden" {...register('totalInventoryItems')} />
-            <Input
-              type="number"
-              min={0}
-              step={1}
-              disabled
-              readOnly
-              value={watch('totalInventoryItems')}
-              tabIndex={-1}
-            />
-          </Field>
-          <Field label={t('moving.vehicleType')} error={errors.vehicleTypeId?.message}>
-              <select className={selectClassName} {...register('vehicleTypeId')}>
-                <option value="">{t('houses.filters.any')}</option>
-                {(vehiclesQuery.data?.items ?? []).map((vehicle) => (
-                  <option key={vehicle.id} value={vehicle.id}>
-                    {vehicle.name}
-                  </option>
-                ))}
-              </select>
-            </Field>
+            <input type="hidden" {...register('vehicleTypeId')} />
 
-          {formError ? <p className="text-sm text-destructive">{formError}</p> : null}
+            {step === 1 ? (
+              <HireMovingStepAddresses
+                register={register}
+                errors={errors}
+                watch={watch}
+                setValue={setValue}
+                townships={townships}
+              />
+            ) : null}
 
-          <div className="flex flex-wrap gap-2">
-            <Button type="submit" disabled={isSubmitting || vehiclesQuery.isLoading}>
-              {isSubmitting ? t('common.loading') : t('moving.submit')}
-            </Button>
-            <Button asChild type="button" variant="outline">
-              <Link to="/">{t('nav.home')}</Link>
-            </Button>
-          </div>
-        </form>
+            {step === 2 ? (
+              <HireMovingStepDetails
+                pickupAddress={pickupAddress}
+                dropoffAddress={dropoffAddress}
+                register={register}
+                errors={errors}
+                floors={floorsQuery.data?.items ?? []}
+                catalog={catalog}
+                inventoryCounts={inventoryCounts}
+                totalInventoryItems={watch('totalInventoryItems')}
+                photoPaths={photoPaths}
+                onPhotoChange={syncPhotoPaths}
+                onInventoryChange={updateInventoryCount}
+                onBack={() => setStep(1)}
+              />
+            ) : null}
+
+            {step === 3 ? (
+              <HireMovingStepEstimate
+                quote={quote}
+                vehicles={vehiclesQuery.data?.items ?? []}
+                vehicleTypeId={vehicleTypeId}
+                onVehicleChange={(nextId) => {
+                  setValue('vehicleTypeId', nextId)
+                  void requestQuote(nextId)
+                }}
+                register={register}
+                errors={errors}
+                isQuoting={isQuoting}
+                isSubmitting={isSubmitting}
+                onBack={() => setStep(2)}
+              />
+            ) : null}
+
+            {formError ? <p className="text-sm text-destructive">{formError}</p> : null}
+          </form>
+        )}
+        
       </CardContent>
     </Card>
-  )
-}
-
-function Field({
-  label,
-  error,
-  className,
-  children,
-}: {
-  label: string
-  error?: string
-  className?: string
-  children: ReactNode
-}) {
-  return (
-    <div className={`space-y-2 ${className ?? ''}`}>
-      <Label>{label}</Label>
-      {children}
-      {error ? <p className="text-sm text-destructive">{error}</p> : null}
-    </div>
   )
 }

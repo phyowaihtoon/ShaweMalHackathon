@@ -35,10 +35,14 @@ enum CancelledByRole {
 }
 
 enum MovingRequestStatus {
-  PENDING
+  BOOKED
   ACCEPTED
   ASSIGNED
-  IN_PROGRESS
+  DRIVER_COMING
+  DRIVER_ARRIVED
+  LOADING
+  ON_THE_WAY
+  UNLOADING
   COMPLETED
   CANCELLED
 }
@@ -223,6 +227,9 @@ model VehicleType {
   capacityLabel String?
   maxLoadKg     Int?
   description   String?
+  pointFrom     Int?
+  pointTo       Int?
+  pricePerKm    Decimal? @db.Decimal(12, 2)
   isActive      Boolean  @default(true)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -255,31 +262,50 @@ model DriverProfile {
 }
 
 model MovingRequest {
-  id                   String             @id @default(cuid())
-  requesterUserId      String
-  assignedDriverUserId String?
-  vehicleTypeId        String
-  status               MovingRequestStatus @default(PENDING)
-  pickupAddress        String
-  dropoffAddress       String
-  moveInDate           DateTime
-  remarks              String?
-  damageChecklist      String?
-  estimatedEarnings    Decimal?           @db.Decimal(12, 2)
-  acceptedAt           DateTime?
-  createdAt            DateTime           @default(now())
-  updatedAt            DateTime           @updatedAt
-  requester            User               @relation("MovingRequester", fields: [requesterUserId], references: [id], onDelete: Cascade)
-  assignedDriver       User?              @relation("MovingAssignedDriver", fields: [assignedDriverUserId], references: [id], onDelete: SetNull)
-  vehicleType          VehicleType        @relation(fields: [vehicleTypeId], references: [id], onDelete: Restrict)
-  photos               MovingRequestPhoto[]
-  inventoryItems       MovingInventoryItem[]
-  statusEvents         MovingStatusEvent[]
-  etaEntries           MovingEtaEntry[]
+  id                     String               @id @default(cuid())
+  orderNumber            String               @unique
+  requesterUserId        String
+  assignedDriverUserId   String?
+  vehicleTypeId          String
+  pickupFloorLevelId     String?
+  dropoffFloorLevelId    String?
+  status                 MovingRequestStatus  @default(BOOKED)
+  pickupAddress          String
+  dropoffAddress         String
+  pickupLatitude         Decimal?             @db.Decimal(10, 7)
+  pickupLongitude        Decimal?             @db.Decimal(10, 7)
+  dropoffLatitude        Decimal?             @db.Decimal(10, 7)
+  dropoffLongitude       Decimal?             @db.Decimal(10, 7)
+  distanceKm             Decimal?             @db.Decimal(10, 2)
+  moveInDate             DateTime
+  remarks                String?
+  damageChecklist        String?
+  totalInventoryPoints   Int                  @default(0)
+  estimatedPrice         Decimal?             @db.Decimal(12, 2)
+  pricePerKmUsed         Decimal?             @db.Decimal(12, 2)
+  pickupFloorSurcharge   Decimal?             @db.Decimal(12, 2)
+  dropoffFloorSurcharge  Decimal?             @db.Decimal(12, 2)
+  estimatedEarnings      Decimal?             @db.Decimal(12, 2)
+  acceptedAt             DateTime?
+  createdAt              DateTime             @default(now())
+  updatedAt              DateTime             @updatedAt
+  requester              User                 @relation("MovingRequester", fields: [requesterUserId], references: [id], onDelete: Cascade)
+  assignedDriver         User?                @relation("MovingAssignedDriver", fields: [assignedDriverUserId], references: [id], onDelete: SetNull)
+  vehicleType            VehicleType          @relation(fields: [vehicleTypeId], references: [id], onDelete: Restrict)
+  pickupFloorLevel       FloorLevel?          @relation("MovingPickupFloor", fields: [pickupFloorLevelId], references: [id], onDelete: Restrict)
+  dropoffFloorLevel      FloorLevel?          @relation("MovingDropoffFloor", fields: [dropoffFloorLevelId], references: [id], onDelete: Restrict)
+  photos                 MovingRequestPhoto[]
+  inventoryItems         MovingInventoryItem[]
+  statusEvents           MovingStatusEvent[]
+  etaEntries             MovingEtaEntry[]
+  ratingReview           RatingReview?
 
   @@index([requesterUserId, createdAt])
   @@index([assignedDriverUserId, createdAt])
   @@index([status, assignedDriverUserId, createdAt])
+  @@index([orderNumber])
+  @@index([pickupFloorLevelId])
+  @@index([dropoffFloorLevelId])
 }
 
 model MovingRequestPhoto {
@@ -293,17 +319,38 @@ model MovingRequestPhoto {
   @@index([movingRequestId])
 }
 
+model MovingInventoryItemType {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  category    String
+  itemName    String
+  points      Int
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  requestItems MovingInventoryItem[]
+
+  @@index([isActive, sortOrder])
+  @@index([category])
+}
+
 model MovingInventoryItem {
-  id              String   @id @default(cuid())
-  movingRequestId String
-  category        String
-  itemName        String
-  count           Int
-  createdAt       DateTime @default(now())
-  movingRequest   MovingRequest @relation(fields: [movingRequestId], references: [id], onDelete: Cascade)
+  id                   String   @id @default(cuid())
+  movingRequestId      String
+  inventoryItemTypeId  String?
+  category             String
+  itemName             String
+  count                Int
+  pointsPerItem        Int      @default(0)
+  linePoints           Int      @default(0)
+  createdAt            DateTime @default(now())
+  movingRequest        MovingRequest @relation(fields: [movingRequestId], references: [id], onDelete: Cascade)
+  inventoryItemType    MovingInventoryItemType? @relation(fields: [inventoryItemTypeId], references: [id], onDelete: SetNull)
 
   @@index([movingRequestId])
   @@index([category])
+  @@index([inventoryItemTypeId])
 }
 
 model MovingStatusEvent {
@@ -351,14 +398,17 @@ model ServiceRegion {
 }
 
 model FloorLevel {
-  id          String   @id @default(cuid())
-  name        String   @unique
-  levelNumber Int?
-  description String?
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  houses      House[]
+  id              String   @id @default(cuid())
+  name            String   @unique
+  levelNumber     Int?
+  surchargeAmount Decimal  @default(0) @db.Decimal(12, 2)
+  description     String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  houses          House[]
+  pickupMovingRequests  MovingRequest[] @relation("MovingPickupFloor")
+  dropoffMovingRequests MovingRequest[] @relation("MovingDropoffFloor")
 }
 
 model Occupation {
@@ -536,6 +586,7 @@ model Booking {
   user               User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   cancelledByUser    User?            @relation("BookingCancelledBy", fields: [cancelledByUserId], references: [id], onDelete: SetNull)
   house              House            @relation(fields: [houseId], references: [id], onDelete: Cascade)
+  ratingReview       RatingReview?
 
   @@index([userId])
   @@index([houseId])
@@ -557,16 +608,20 @@ model Wishlist {
 }
 
 model RatingReview {
-  id             String           @id @default(cuid())
-  reviewerUserId String
-  targetType     ReviewTargetType
-  targetUserId   String
-  rating         Int
-  comment        String?
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
-  reviewer       User             @relation("RatingReviewReviewer", fields: [reviewerUserId], references: [id], onDelete: Cascade)
-  targetUser     User             @relation("RatingReviewTarget", fields: [targetUserId], references: [id], onDelete: Cascade)
+  id              String           @id @default(cuid())
+  reviewerUserId  String
+  targetType      ReviewTargetType
+  targetUserId    String
+  rating          Int
+  comment         String?          @db.VarChar(1000)
+  bookingId       String?          @unique
+  movingRequestId String?          @unique
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  reviewer        User             @relation("RatingReviewReviewer", fields: [reviewerUserId], references: [id], onDelete: Cascade)
+  targetUser      User             @relation("RatingReviewTarget", fields: [targetUserId], references: [id], onDelete: Cascade)
+  booking         Booking?         @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  movingRequest   MovingRequest?   @relation(fields: [movingRequestId], references: [id], onDelete: Cascade)
 
   @@index([reviewerUserId, createdAt])
   @@index([targetType, targetUserId, createdAt])

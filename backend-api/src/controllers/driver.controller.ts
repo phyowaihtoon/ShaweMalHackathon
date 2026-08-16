@@ -22,11 +22,34 @@ const requireDriverId = (req: Request): string => {
 
 const parseDriverStatus = (
   value: string
-): 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' => {
+):
+  | 'DRIVER_COMING'
+  | 'DRIVER_ARRIVED'
+  | 'LOADING'
+  | 'ON_THE_WAY'
+  | 'UNLOADING'
+  | 'COMPLETED'
+  | 'CANCELLED' => {
   const normalized = value.toLowerCase();
 
-  if (normalized === 'in_progress') {
-    return MovingRequestStatus.IN_PROGRESS;
+  if (normalized === 'driver_coming') {
+    return MovingRequestStatus.DRIVER_COMING;
+  }
+
+  if (normalized === 'driver_arrived') {
+    return MovingRequestStatus.DRIVER_ARRIVED;
+  }
+
+  if (normalized === 'loading') {
+    return MovingRequestStatus.LOADING;
+  }
+
+  if (normalized === 'on_the_way') {
+    return MovingRequestStatus.ON_THE_WAY;
+  }
+
+  if (normalized === 'unloading') {
+    return MovingRequestStatus.UNLOADING;
   }
 
   if (normalized === 'completed') {

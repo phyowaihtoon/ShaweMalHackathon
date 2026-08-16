@@ -25,6 +25,7 @@ interface MockHouse {
   stateId: string;
   propertyTypeId: string;
   availability: 'AVAILABLE' | 'NOT_AVAILABLE';
+  agentId?: string;
 }
 
 interface MockRoommatePost {
@@ -66,6 +67,8 @@ interface MockReview {
   targetUserId: string;
   rating: number;
   comment: string | null;
+  bookingId?: string | null;
+  movingRequestId?: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -89,10 +92,11 @@ interface MockBooking {
 
 interface MockMovingRequest {
   id: string;
+  orderNumber?: string;
   requesterUserId: string;
   assignedDriverUserId: string | null;
   vehicleTypeId: string;
-  status: 'PENDING' | 'ACCEPTED' | 'ASSIGNED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+  status: 'BOOKED' | 'ACCEPTED' | 'ASSIGNED' | 'DRIVER_COMING' | 'COMPLETED' | 'CANCELLED';
   pickupAddress: string;
   dropoffAddress: string;
   moveInDate: Date;
@@ -393,12 +397,44 @@ jest.mock('../../src/prisma/client', () => {
           targetUserId: data.targetUserId,
           rating: data.rating,
           comment: data.comment ?? null,
+          bookingId: data.bookingId ?? null,
+          movingRequestId: data.movingRequestId ?? null,
           createdAt: now,
           updatedAt: now
         };
 
         reviews.push(created);
         return hydrateReview(created);
+      }),
+      findUnique: jest.fn(async ({ where }: { where: { id?: string; bookingId?: string; movingRequestId?: string } }) => {
+        const found = reviews.find((item) => {
+          if (where.id) {
+            return item.id === where.id;
+          }
+
+          if (where.bookingId) {
+            return item.bookingId === where.bookingId;
+          }
+
+          if (where.movingRequestId) {
+            return item.movingRequestId === where.movingRequestId;
+          }
+
+          return false;
+        });
+
+        return found ? hydrateReview(found) : null;
+      }),
+      update: jest.fn(async ({ where, data }: { where: { id: string }; data: any }) => {
+        const found = reviews.find((item) => item.id === where.id);
+        if (!found) {
+          throw new Error('Review not found');
+        }
+
+        found.rating = data.rating ?? found.rating;
+        found.comment = data.comment === undefined ? found.comment : data.comment;
+        found.updatedAt = new Date();
+        return hydrateReview(found);
       }),
       findMany: jest.fn(async ({ where }: { where: { targetType: 'AGENT' | 'DRIVER'; targetUserId: string } }) => {
         return reviews
@@ -490,6 +526,36 @@ jest.mock('../../src/prisma/client', () => {
       })
     },
     booking: {
+      findUnique: jest.fn(async ({ where }: { where: { id: string } }) => {
+        const found = bookings.find((item) => item.id === where.id);
+        if (!found) {
+          return null;
+        }
+
+        const house = houses.get(found.houseId);
+        return {
+          ...found,
+          house: {
+            id: house?.id ?? 'unknown-house',
+            title: house?.title ?? 'Unknown',
+            agentId: house?.agentId ?? 'user-agent',
+            availability: house?.availability ?? 'AVAILABLE',
+            city: {
+              id: house?.cityId ?? 'unknown-city',
+              name: cities.get(house?.cityId ?? '')?.name ?? 'Unknown'
+            },
+            state: {
+              id: house?.stateId ?? 'unknown-state',
+              name: states.get(house?.stateId ?? '')?.name ?? 'Unknown'
+            },
+            agent: {
+              id: house?.agentId ?? 'user-agent',
+              name: users.get(house?.agentId ?? 'user-agent')?.name ?? 'Agent User'
+            }
+          },
+          ratingReview: reviews.find((item) => item.bookingId === found.id) ?? null
+        };
+      }),
       findMany: jest.fn(async ({ where }: { where: { userId: string } }) => {
         return bookings
           .filter((item) => item.userId === where.userId)
@@ -502,6 +568,7 @@ jest.mock('../../src/prisma/client', () => {
                 id: house?.id ?? 'unknown-house',
                 title: house?.title ?? 'Unknown',
                 availability: house?.availability ?? 'AVAILABLE',
+                agentId: house?.agentId ?? 'user-agent',
                 city: {
                   id: house?.cityId ?? 'unknown-city',
                   name: cities.get(house?.cityId ?? '')?.name ?? 'Unknown'
@@ -509,8 +576,13 @@ jest.mock('../../src/prisma/client', () => {
                 state: {
                   id: house?.stateId ?? 'unknown-state',
                   name: states.get(house?.stateId ?? '')?.name ?? 'Unknown'
+                },
+                agent: {
+                  id: house?.agentId ?? 'user-agent',
+                  name: users.get(house?.agentId ?? 'user-agent')?.name ?? 'Agent User'
                 }
-              }
+              },
+              ratingReview: reviews.find((review) => review.bookingId === item.id) ?? null
             };
           });
       }),
@@ -524,6 +596,17 @@ jest.mock('../../src/prisma/client', () => {
       })
     },
     movingRequest: {
+      findUnique: jest.fn(async ({ where }: { where: { id: string } }) => {
+        const found = movingRequests.find((item) => item.id === where.id);
+        if (!found) {
+          return null;
+        }
+
+        return {
+          ...found,
+          ratingReview: reviews.find((item) => item.movingRequestId === found.id) ?? null
+        };
+      }),
       findMany: jest.fn(async ({ where }: { where: { requesterUserId: string } }) => {
         return movingRequests
           .filter((item) => item.requesterUserId === where.requesterUserId)
@@ -540,7 +623,8 @@ jest.mock('../../src/prisma/client', () => {
                   name: users.get(item.assignedDriverUserId)?.name ?? 'Unknown Driver',
                   phone: users.get(item.assignedDriverUserId)?.phone ?? '0000000'
                 }
-              : null
+              : null,
+            ratingReview: reviews.find((review) => review.movingRequestId === item.id) ?? null
           }));
       }),
       groupBy: jest.fn(async () => {
@@ -638,7 +722,8 @@ describe('Core increment modules', () => {
       cityId: 'city-1',
       stateId: 'state-1',
       propertyTypeId: 'ptype-1',
-      availability: 'AVAILABLE'
+      availability: 'AVAILABLE',
+      agentId: 'user-agent'
     });
 
     roommatePosts.push({
@@ -715,12 +800,13 @@ describe('Core increment modules', () => {
       id: 'booking-1',
       userId: 'user-normal',
       houseId: 'house-1',
-      status: 'PENDING',
+      status: 'CONFIRMED',
       createdAt: new Date('2026-08-11T05:00:00.000Z')
     });
 
     movingRequests.push({
       id: 'moving-1',
+      orderNumber: 'MOV-20260811-000001',
       requesterUserId: 'user-normal',
       assignedDriverUserId: 'user-driver',
       vehicleTypeId: 'vt-1',
@@ -807,8 +893,7 @@ describe('Core increment modules', () => {
 
   it('supports reviews submit/list with auth and validation', async () => {
     const unauthorized = await request(app).post('/api/v1/reviews').send({
-      targetType: 'AGENT',
-      targetUserId: 'user-agent',
+      bookingId: 'booking-1',
       rating: 5
     });
 
@@ -818,24 +903,152 @@ describe('Core increment modules', () => {
       .post('/api/v1/reviews')
       .set('Authorization', authHeader('user-normal', ['normal']))
       .send({
-        targetType: 'AGENT',
-        targetUserId: 'user-agent',
+        bookingId: 'booking-1',
         rating: 7
       });
 
     expect(invalidPayload.status).toBe(400);
 
+    const missingSource = await request(app)
+      .post('/api/v1/reviews')
+      .set('Authorization', authHeader('user-normal', ['normal']))
+      .send({
+        rating: 4
+      });
+
+    expect(missingSource.status).toBe(400);
+
     const createResponse = await request(app)
       .post('/api/v1/reviews')
       .set('Authorization', authHeader('user-normal', ['normal']))
       .send({
-        targetType: 'AGENT',
-        targetUserId: 'user-agent',
+        bookingId: 'booking-1',
         rating: 4,
         comment: 'Good service'
       });
 
     expect(createResponse.status).toBe(201);
+    expect(createResponse.body.data.item.targetType).toBe('AGENT');
+    expect(createResponse.body.data.item.targetUserId).toBe('user-agent');
+    expect(createResponse.body.data.item.bookingId).toBe('booking-1');
+
+    const upsertResponse = await request(app)
+      .post('/api/v1/reviews')
+      .set('Authorization', authHeader('user-normal', ['normal']))
+      .send({
+        bookingId: 'booking-1',
+        rating: 5,
+        comment: 'Updated comment'
+      });
+
+    expect(upsertResponse.status).toBe(200);
+    expect(upsertResponse.body.data.item.rating).toBe(5);
+    expect(upsertResponse.body.data.item.comment).toBe('Updated comment');
+
+    const driverCreate = await request(app)
+      .post('/api/v1/reviews')
+      .set('Authorization', authHeader('user-normal', ['normal']))
+      .send({
+        movingRequestId: 'moving-1',
+        rating: 3
+      });
+
+    expect(driverCreate.status).toBe(201);
+    expect(driverCreate.body.data.item.targetType).toBe('DRIVER');
+    expect(driverCreate.body.data.item.targetUserId).toBe('user-driver');
+
+    const notOwner = await request(app)
+      .post('/api/v1/reviews')
+      .set('Authorization', authHeader('user-admin', ['admin']))
+      .send({
+        bookingId: 'booking-1',
+        rating: 5
+      });
+
+    expect(notOwner.status).toBe(403);
+
+    bookings.push({
+      id: 'booking-cancelled',
+      userId: 'user-normal',
+      houseId: 'house-1',
+      status: 'CANCELLED',
+      createdAt: new Date('2026-08-11T06:00:00.000Z')
+    });
+
+    const cancelledBooking = await request(app)
+      .post('/api/v1/reviews')
+      .set('Authorization', authHeader('user-normal', ['normal']))
+      .send({
+        bookingId: 'booking-cancelled',
+        rating: 4
+      });
+
+    expect(cancelledBooking.status).toBe(400);
+
+    movingRequests.push({
+      id: 'moving-booked',
+      orderNumber: 'MOV-20260811-000002',
+      requesterUserId: 'user-normal',
+      assignedDriverUserId: 'user-driver',
+      vehicleTypeId: 'vt-1',
+      status: 'BOOKED',
+      pickupAddress: 'A',
+      dropoffAddress: 'B',
+      moveInDate: new Date('2026-08-20T00:00:00.000Z'),
+      remarks: null,
+      damageChecklist: null,
+      acceptedAt: null,
+      createdAt: new Date('2026-08-11T07:00:00.000Z'),
+      updatedAt: new Date('2026-08-11T07:00:00.000Z')
+    });
+
+    const incompleteMove = await request(app)
+      .post('/api/v1/reviews')
+      .set('Authorization', authHeader('user-normal', ['normal']))
+      .send({
+        movingRequestId: 'moving-booked',
+        rating: 4
+      });
+
+    expect(incompleteMove.status).toBe(400);
+
+    movingRequests.push({
+      id: 'moving-no-driver',
+      orderNumber: 'MOV-20260811-000003',
+      requesterUserId: 'user-normal',
+      assignedDriverUserId: null,
+      vehicleTypeId: 'vt-1',
+      status: 'COMPLETED',
+      pickupAddress: 'A',
+      dropoffAddress: 'B',
+      moveInDate: new Date('2026-08-20T00:00:00.000Z'),
+      remarks: null,
+      damageChecklist: null,
+      acceptedAt: null,
+      createdAt: new Date('2026-08-11T08:00:00.000Z'),
+      updatedAt: new Date('2026-08-11T08:00:00.000Z')
+    });
+
+    const missingDriver = await request(app)
+      .post('/api/v1/reviews')
+      .set('Authorization', authHeader('user-normal', ['normal']))
+      .send({
+        movingRequestId: 'moving-no-driver',
+        rating: 4
+      });
+
+    expect(missingDriver.status).toBe(400);
+
+    const longComment = await request(app)
+      .post('/api/v1/reviews')
+      .set('Authorization', authHeader('user-normal', ['normal']))
+      .send({
+        bookingId: 'booking-1',
+        rating: 5,
+        comment: 'x'.repeat(1001)
+      });
+
+    expect(longComment.status).toBe(400);
 
     const listInvalid = await request(app).get('/api/v1/reviews');
     expect(listInvalid.status).toBe(400);

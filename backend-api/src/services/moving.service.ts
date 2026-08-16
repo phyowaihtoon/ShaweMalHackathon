@@ -2,6 +2,15 @@ import { MovingRequestStatus, MovingStatusEventType, Prisma } from '@prisma/clie
 
 import { prisma } from '../prisma/client';
 import { ApiError } from '../utils/api-error';
+import {
+  geocodeAddress,
+  haversineKm,
+  isWithinYangon,
+  parseOptionalGeoPoint,
+  type GeoPoint
+} from './geocode.service';
+import { calculateEstimatedPrice, suggestVehicleType } from './moving-quote';
+import { toMyReview } from './review.service';
 
 interface AuthActor {
   userId: string;
@@ -9,20 +18,28 @@ interface AuthActor {
 }
 
 interface CreateMovingRequestInventoryItemInput {
-  category: string;
-  itemName: string;
+  inventoryItemTypeId: string;
   count: number;
 }
 
-interface CreateMovingRequestInput {
+interface QuoteMovingRequestInput {
   pickupAddress: string;
   dropoffAddress: string;
+  pickupLatitude?: number | null;
+  pickupLongitude?: number | null;
+  dropoffLatitude?: number | null;
+  dropoffLongitude?: number | null;
+  pickupFloorLevelId: string;
+  dropoffFloorLevelId: string;
+  inventoryItems: CreateMovingRequestInventoryItemInput[];
+  vehicleTypeId?: string;
+}
+
+interface CreateMovingRequestInput extends QuoteMovingRequestInput {
   moveInDate: Date;
-  vehicleTypeId: string;
   remarks?: string;
   damageChecklist?: string;
   photos: string[];
-  inventoryItems: CreateMovingRequestInventoryItemInput[];
 }
 
 interface RejectMovingRequestInput {
@@ -42,9 +59,25 @@ interface AddMovingEtaInput {
 interface UpdateMovingStatusInput {
   movingRequestId: string;
   driverUserId: string;
-  status: 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+  status:
+    | 'DRIVER_COMING'
+    | 'DRIVER_ARRIVED'
+    | 'LOADING'
+    | 'ON_THE_WAY'
+    | 'UNLOADING'
+    | 'COMPLETED'
+    | 'CANCELLED';
   notes?: string;
 }
+
+const DRIVER_STATUS_SEQUENCE: UpdateMovingStatusInput['status'][] = [
+  MovingRequestStatus.DRIVER_COMING,
+  MovingRequestStatus.DRIVER_ARRIVED,
+  MovingRequestStatus.LOADING,
+  MovingRequestStatus.ON_THE_WAY,
+  MovingRequestStatus.UNLOADING,
+  MovingRequestStatus.COMPLETED
+];
 
 interface AssignMovingRequestInput {
   movingRequestId: string;
@@ -67,7 +100,15 @@ const movingRequestArgs = Prisma.validator<Prisma.MovingRequestDefaultArgs>()({
         id: true,
         name: true,
         phone: true,
-        email: true
+        email: true,
+        driverProfile: {
+          select: {
+            name: true,
+            phone: true,
+            profilePhotoPath: true,
+            vehicleLicensePlateNumber: true
+          }
+        }
       }
     },
     vehicleType: {
@@ -75,7 +116,26 @@ const movingRequestArgs = Prisma.validator<Prisma.MovingRequestDefaultArgs>()({
         id: true,
         name: true,
         capacityLabel: true,
-        maxLoadKg: true
+        maxLoadKg: true,
+        pointFrom: true,
+        pointTo: true,
+        pricePerKm: true
+      }
+    },
+    pickupFloorLevel: {
+      select: {
+        id: true,
+        name: true,
+        levelNumber: true,
+        surchargeAmount: true
+      }
+    },
+    dropoffFloorLevel: {
+      select: {
+        id: true,
+        name: true,
+        levelNumber: true,
+        surchargeAmount: true
       }
     },
     photos: {
@@ -92,9 +152,12 @@ const movingRequestArgs = Prisma.validator<Prisma.MovingRequestDefaultArgs>()({
     inventoryItems: {
       select: {
         id: true,
+        inventoryItemTypeId: true,
         category: true,
         itemName: true,
         count: true,
+        pointsPerItem: true,
+        linePoints: true,
         createdAt: true
       },
       orderBy: [{ category: 'asc' }, { itemName: 'asc' }]
@@ -124,29 +187,74 @@ const movingRequestArgs = Prisma.validator<Prisma.MovingRequestDefaultArgs>()({
       orderBy: {
         createdAt: 'asc'
       }
+    },
+    ratingReview: {
+      select: {
+        id: true,
+        rating: true,
+        comment: true,
+        reviewerUserId: true
+      }
     }
   }
 });
 
 type MovingRequestWithDetails = Prisma.MovingRequestGetPayload<typeof movingRequestArgs>;
 
-const normalizeMovingRequest = (request: MovingRequestWithDetails) => ({
+const decimalToNumber = (value: Prisma.Decimal | number | null | undefined): number | null => {
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  return Number(value);
+};
+
+const normalizeMovingRequest = (request: MovingRequestWithDetails, viewerUserId?: string) => ({
   id: request.id,
+  orderNumber: request.orderNumber,
   status: request.status,
   pickupAddress: request.pickupAddress,
   dropoffAddress: request.dropoffAddress,
+  pickupLatitude: decimalToNumber(request.pickupLatitude),
+  pickupLongitude: decimalToNumber(request.pickupLongitude),
+  dropoffLatitude: decimalToNumber(request.dropoffLatitude),
+  dropoffLongitude: decimalToNumber(request.dropoffLongitude),
+  distanceKm: decimalToNumber(request.distanceKm),
   moveInDate: request.moveInDate,
   remarks: request.remarks,
   damageChecklist: request.damageChecklist,
-  estimatedEarnings: request.estimatedEarnings ? Number(request.estimatedEarnings) : null,
+  totalInventoryPoints: request.totalInventoryPoints,
+  estimatedPrice: decimalToNumber(request.estimatedPrice),
+  pricePerKmUsed: decimalToNumber(request.pricePerKmUsed),
+  pickupFloorSurcharge: decimalToNumber(request.pickupFloorSurcharge),
+  dropoffFloorSurcharge: decimalToNumber(request.dropoffFloorSurcharge),
+  estimatedEarnings: decimalToNumber(request.estimatedEarnings),
   acceptedAt: request.acceptedAt,
   requester: request.requester,
   assignedDriver: request.assignedDriver,
-  vehicleType: request.vehicleType,
+  vehicleType: request.vehicleType
+    ? {
+        ...request.vehicleType,
+        pricePerKm: decimalToNumber(request.vehicleType.pricePerKm)
+      }
+    : request.vehicleType,
+  pickupFloorLevel: request.pickupFloorLevel
+    ? {
+        ...request.pickupFloorLevel,
+        surchargeAmount: decimalToNumber(request.pickupFloorLevel.surchargeAmount)
+      }
+    : request.pickupFloorLevel,
+  dropoffFloorLevel: request.dropoffFloorLevel
+    ? {
+        ...request.dropoffFloorLevel,
+        surchargeAmount: decimalToNumber(request.dropoffFloorLevel.surchargeAmount)
+      }
+    : request.dropoffFloorLevel,
   photos: request.photos,
   inventoryItems: request.inventoryItems,
   statusEvents: request.statusEvents,
   etaEntries: request.etaEntries,
+  myReview: viewerUserId ? toMyReview(request.ratingReview, viewerUserId) : null,
   createdAt: request.createdAt,
   updatedAt: request.updatedAt
 });
@@ -244,7 +352,7 @@ const notifyRequester = async (requesterUserId: string, title: string, message: 
 };
 
 const calculateEstimatedEarnings = (
-  inventoryItems: CreateMovingRequestInventoryItemInput[],
+  inventoryItems: Array<{ count: number }>,
   vehicleType: { maxLoadKg: number | null; name: string }
 ): number => {
   const itemCount = inventoryItems.reduce((sum, item) => sum + item.count, 0);
@@ -252,32 +360,280 @@ const calculateEstimatedEarnings = (
   return Math.round(baseRate + itemCount * 1500);
 };
 
-export const createMovingRequest = async (requesterUserId: string, input: CreateMovingRequestInput) => {
-  const vehicleType = await prisma.vehicleType.findUnique({
-    where: { id: input.vehicleTypeId },
-    select: {
-      id: true,
-      isActive: true,
-      name: true,
-      maxLoadKg: true
+const toDecimalNumber = (value: Prisma.Decimal | number | null | undefined): number => {
+  if (value === null || value === undefined) {
+    return 0;
+  }
+
+  return Number(value);
+};
+
+const generateOrderNumber = async (): Promise<string> => {
+  const now = new Date();
+  const ymd = now.toISOString().slice(0, 10).replace(/-/g, '');
+  const dayStart = new Date(`${now.toISOString().slice(0, 10)}T00:00:00.000Z`);
+  const count = await prisma.movingRequest.count({
+    where: {
+      createdAt: {
+        gte: dayStart
+      }
     }
   });
 
-  if (!vehicleType || !vehicleType.isActive) {
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const sequence = String(count + 1 + attempt).padStart(6, '0');
+    const orderNumber = `MOV-${ymd}-${sequence}`;
+    const existing = await prisma.movingRequest.findUnique({
+      where: { orderNumber },
+      select: { id: true }
+    });
+    if (!existing) {
+      return orderNumber;
+    }
+  }
+
+  return `MOV-${ymd}-${Date.now().toString().slice(-6)}`;
+};
+
+const loadFloorLevel = async (floorLevelId: string, field: 'pickup' | 'dropoff') => {
+  const floor = await prisma.floorLevel.findUnique({
+    where: { id: floorLevelId },
+    select: {
+      id: true,
+      name: true,
+      levelNumber: true,
+      surchargeAmount: true,
+      isActive: true
+    }
+  });
+
+  if (!floor || !floor.isActive) {
+    throw new ApiError(
+      400,
+      'FLOOR_LEVEL_NOT_AVAILABLE',
+      `${field === 'pickup' ? 'Pickup' : 'Drop-off'} floor level is invalid or inactive.`
+    );
+  }
+
+  return floor;
+};
+
+const resolveInventoryLines = async (inventoryItems: CreateMovingRequestInventoryItemInput[]) => {
+  const typeIds = [...new Set(inventoryItems.map((item) => item.inventoryItemTypeId))];
+  const types = await prisma.movingInventoryItemType.findMany({
+    where: {
+      id: { in: typeIds },
+      isActive: true
+    }
+  });
+  const typesById = new Map(types.map((item) => [item.id, item]));
+
+  const lines = inventoryItems
+    .filter((item) => item.count > 0)
+    .map((item) => {
+      const catalogItem = typesById.get(item.inventoryItemTypeId);
+      if (!catalogItem) {
+        throw new ApiError(400, 'INVENTORY_ITEM_TYPE_NOT_AVAILABLE', 'Inventory item type is invalid or inactive.');
+      }
+
+      const pointsPerItem = catalogItem.points;
+      const linePoints = pointsPerItem * item.count;
+      return {
+        inventoryItemTypeId: catalogItem.id,
+        category: catalogItem.category,
+        itemName: catalogItem.itemName,
+        count: item.count,
+        pointsPerItem,
+        linePoints
+      };
+    });
+
+  if (lines.length === 0) {
+    throw new ApiError(400, 'INVENTORY_REQUIRED', 'Total inventory items must be greater than zero.');
+  }
+
+  const totalInventoryPoints = lines.reduce((sum, item) => sum + item.linePoints, 0);
+  const totalItemCount = lines.reduce((sum, item) => sum + item.count, 0);
+
+  return { lines, totalInventoryPoints, totalItemCount };
+};
+
+const resolveQuotePoint = async (
+  address: string,
+  latitude?: number | null,
+  longitude?: number | null
+): Promise<GeoPoint> => {
+  const provided = parseOptionalGeoPoint(latitude ?? null, longitude ?? null);
+  if (provided) {
+    if (!isWithinYangon(provided)) {
+      throw new ApiError(
+        400,
+        'ADDRESS_GEOCODE_FAILED',
+        'Map pins must be inside the Yangon service area.'
+      );
+    }
+    return provided;
+  }
+
+  return geocodeAddress(address);
+};
+
+const resolveQuote = async (input: QuoteMovingRequestInput) => {
+  const { lines, totalInventoryPoints } = await resolveInventoryLines(input.inventoryItems);
+  const pickupFloor = await loadFloorLevel(input.pickupFloorLevelId, 'pickup');
+  const dropoffFloor = await loadFloorLevel(input.dropoffFloorLevelId, 'dropoff');
+
+  const vehicleTypes = await prisma.vehicleType.findMany({
+    where: { isActive: true },
+    select: {
+      id: true,
+      name: true,
+      isActive: true,
+      capacityLabel: true,
+      maxLoadKg: true,
+      pointFrom: true,
+      pointTo: true,
+      pricePerKm: true
+    }
+  });
+
+  let suggestion: ReturnType<typeof suggestVehicleType>;
+  try {
+    suggestion = suggestVehicleType(
+      totalInventoryPoints,
+      vehicleTypes.map((item) => ({
+        id: item.id,
+        name: item.name,
+        pointFrom: item.pointFrom,
+        pointTo: item.pointTo,
+        pricePerKm: decimalToNumber(item.pricePerKm)
+      }))
+    );
+  } catch {
+    throw new ApiError(400, 'VEHICLE_TYPE_NOT_AVAILABLE', 'No vehicle types with point ranges are available.');
+  }
+
+  const selectedId = input.vehicleTypeId?.trim() || suggestion.vehicle.id;
+  const selectedVehicle = vehicleTypes.find((item) => item.id === selectedId);
+  if (!selectedVehicle || !selectedVehicle.isActive) {
     throw new ApiError(400, 'VEHICLE_TYPE_NOT_AVAILABLE', 'Vehicle type is invalid or inactive.');
   }
 
-  const estimatedEarnings = calculateEstimatedEarnings(input.inventoryItems, vehicleType);
+  const pricePerKm = decimalToNumber(selectedVehicle.pricePerKm);
+  if (pricePerKm === null || !Number.isFinite(pricePerKm) || pricePerKm < 0) {
+    throw new ApiError(400, 'VEHICLE_TYPE_NOT_AVAILABLE', 'Selected vehicle type is missing PricePerKM.');
+  }
+
+  const pickupPoint: GeoPoint = await resolveQuotePoint(
+    input.pickupAddress,
+    input.pickupLatitude,
+    input.pickupLongitude
+  );
+  const dropoffPoint: GeoPoint = await resolveQuotePoint(
+    input.dropoffAddress,
+    input.dropoffLatitude,
+    input.dropoffLongitude
+  );
+  const distanceKm = haversineKm(pickupPoint, dropoffPoint);
+  const pickupFloorSurcharge = toDecimalNumber(pickupFloor.surchargeAmount);
+  const dropoffFloorSurcharge = toDecimalNumber(dropoffFloor.surchargeAmount);
+  const estimatedPrice = calculateEstimatedPrice({
+    pickupFloorSurcharge,
+    dropoffFloorSurcharge,
+    pricePerKm,
+    distanceKm
+  });
+
+  return {
+    lines,
+    totalInventoryPoints,
+    pickupFloor,
+    dropoffFloor,
+    suggestedVehicleType: {
+      id: suggestion.vehicle.id,
+      name: suggestion.vehicle.name,
+      pointFrom: suggestion.vehicle.pointFrom,
+      pointTo: suggestion.vehicle.pointTo,
+      pricePerKm: suggestion.vehicle.pricePerKm,
+      match: suggestion.match
+    },
+    selectedVehicle,
+    pricePerKm,
+    pickupPoint,
+    dropoffPoint,
+    distanceKm,
+    pickupFloorSurcharge,
+    dropoffFloorSurcharge,
+    estimatedPrice
+  };
+};
+
+export const quoteMovingRequest = async (input: QuoteMovingRequestInput) => {
+  const quote = await resolveQuote(input);
+
+  return {
+    pickupAddress: input.pickupAddress,
+    dropoffAddress: input.dropoffAddress,
+    pickupFloorLevel: {
+      id: quote.pickupFloor.id,
+      name: quote.pickupFloor.name,
+      levelNumber: quote.pickupFloor.levelNumber,
+      surchargeAmount: quote.pickupFloorSurcharge
+    },
+    dropoffFloorLevel: {
+      id: quote.dropoffFloor.id,
+      name: quote.dropoffFloor.name,
+      levelNumber: quote.dropoffFloor.levelNumber,
+      surchargeAmount: quote.dropoffFloorSurcharge
+    },
+    distanceKm: quote.distanceKm,
+    totalInventoryPoints: quote.totalInventoryPoints,
+    inventoryItems: quote.lines,
+    suggestedVehicleType: quote.suggestedVehicleType,
+    selectedVehicleType: {
+      id: quote.selectedVehicle.id,
+      name: quote.selectedVehicle.name,
+      capacityLabel: quote.selectedVehicle.capacityLabel,
+      maxLoadKg: quote.selectedVehicle.maxLoadKg,
+      pointFrom: quote.selectedVehicle.pointFrom,
+      pointTo: quote.selectedVehicle.pointTo,
+      pricePerKm: quote.pricePerKm
+    },
+    pricePerKm: quote.pricePerKm,
+    pickupFloorSurcharge: quote.pickupFloorSurcharge,
+    dropoffFloorSurcharge: quote.dropoffFloorSurcharge,
+    estimatedPrice: quote.estimatedPrice
+  };
+};
+
+export const createMovingRequest = async (requesterUserId: string, input: CreateMovingRequestInput) => {
+  const quote = await resolveQuote(input);
+  const estimatedEarnings = calculateEstimatedEarnings(quote.lines, quote.selectedVehicle);
+  const orderNumber = await generateOrderNumber();
 
   const movingRequest = await prisma.movingRequest.create({
     data: {
+      orderNumber,
       requesterUserId,
-      vehicleTypeId: input.vehicleTypeId,
+      status: MovingRequestStatus.BOOKED,
+      vehicleTypeId: quote.selectedVehicle.id,
+      pickupFloorLevelId: quote.pickupFloor.id,
+      dropoffFloorLevelId: quote.dropoffFloor.id,
       pickupAddress: input.pickupAddress,
       dropoffAddress: input.dropoffAddress,
+      pickupLatitude: new Prisma.Decimal(quote.pickupPoint.latitude),
+      pickupLongitude: new Prisma.Decimal(quote.pickupPoint.longitude),
+      dropoffLatitude: new Prisma.Decimal(quote.dropoffPoint.latitude),
+      dropoffLongitude: new Prisma.Decimal(quote.dropoffPoint.longitude),
+      distanceKm: new Prisma.Decimal(quote.distanceKm),
       moveInDate: input.moveInDate,
       remarks: input.remarks,
       damageChecklist: input.damageChecklist,
+      totalInventoryPoints: quote.totalInventoryPoints,
+      estimatedPrice: new Prisma.Decimal(quote.estimatedPrice),
+      pricePerKmUsed: new Prisma.Decimal(quote.pricePerKm),
+      pickupFloorSurcharge: new Prisma.Decimal(quote.pickupFloorSurcharge),
+      dropoffFloorSurcharge: new Prisma.Decimal(quote.dropoffFloorSurcharge),
       estimatedEarnings: new Prisma.Decimal(estimatedEarnings),
       photos: {
         create: input.photos.map((photoPath, index) => ({
@@ -286,17 +642,20 @@ export const createMovingRequest = async (requesterUserId: string, input: Create
         }))
       },
       inventoryItems: {
-        create: input.inventoryItems.map((item) => ({
+        create: quote.lines.map((item) => ({
+          inventoryItemTypeId: item.inventoryItemTypeId,
           category: item.category,
           itemName: item.itemName,
-          count: item.count
+          count: item.count,
+          pointsPerItem: item.pointsPerItem,
+          linePoints: item.linePoints
         }))
       },
       statusEvents: {
         create: {
           actorUserId: requesterUserId,
           eventType: MovingStatusEventType.CREATED,
-          status: MovingRequestStatus.PENDING,
+          status: MovingRequestStatus.BOOKED,
           notes: 'Moving request created by requester.'
         }
       }
@@ -304,9 +663,9 @@ export const createMovingRequest = async (requesterUserId: string, input: Create
     include: movingRequestArgs.include
   });
 
-  await notifyVerifiedDriversForNewRequest(movingRequest.id);
+  await notifyVerifiedDriversForNewRequest(movingRequest.orderNumber);
 
-  return normalizeMovingRequest(movingRequest);
+  return normalizeMovingRequest(movingRequest, requesterUserId);
 };
 
 export const getMovingRequestById = async (movingRequestId: string, actor: AuthActor) => {
@@ -326,12 +685,12 @@ export const getMovingRequestById = async (movingRequestId: string, actor: AuthA
   const isAdmin = actor.roles.includes('admin');
 
   if (isOwner || isAssignedDriver || isAdmin) {
-    return normalizeMovingRequest(movingRequest);
+    return normalizeMovingRequest(movingRequest, actor.userId);
   }
 
   // Verified drivers can open available pending jobs (same pool as listAvailable).
   const isAvailableForDrivers =
-    movingRequest.status === MovingRequestStatus.PENDING && movingRequest.assignedDriverUserId === null;
+    movingRequest.status === MovingRequestStatus.BOOKED && movingRequest.assignedDriverUserId === null;
 
   if (actor.roles.includes('driver') && isAvailableForDrivers) {
     await ensureDriverVerified(actor.userId);
@@ -346,11 +705,25 @@ export const getMovingRequestById = async (movingRequestId: string, actor: AuthA
     });
 
     if (!rejectedByDriver) {
-      return normalizeMovingRequest(movingRequest);
+      return normalizeMovingRequest(movingRequest, actor.userId);
     }
   }
 
   throw new ApiError(403, 'MOVING_REQUEST_FORBIDDEN', 'You are not allowed to view this moving request.');
+};
+
+export const listMyMovingRequests = async (requesterUserId: string) => {
+  const requests = await prisma.movingRequest.findMany({
+    where: {
+      requesterUserId
+    },
+    include: movingRequestArgs.include,
+    orderBy: {
+      updatedAt: 'desc'
+    }
+  });
+
+  return requests.map((request) => normalizeMovingRequest(request, requesterUserId));
 };
 
 export const listAvailableMovingRequestsForDriver = async (driverUserId: string) => {
@@ -358,7 +731,7 @@ export const listAvailableMovingRequestsForDriver = async (driverUserId: string)
 
   const requests = await prisma.movingRequest.findMany({
     where: {
-      status: MovingRequestStatus.PENDING,
+      status: MovingRequestStatus.BOOKED,
       assignedDriverUserId: null,
       statusEvents: {
         none: {
@@ -373,7 +746,7 @@ export const listAvailableMovingRequestsForDriver = async (driverUserId: string)
     }
   });
 
-  return requests.map(normalizeMovingRequest);
+  return requests.map((request) => normalizeMovingRequest(request, driverUserId));
 };
 
 export const acceptMovingRequest = async (movingRequestId: string, driverUserId: string) => {
@@ -383,7 +756,7 @@ export const acceptMovingRequest = async (movingRequestId: string, driverUserId:
     const updateResult = await tx.movingRequest.updateMany({
       where: {
         id: movingRequestId,
-        status: MovingRequestStatus.PENDING,
+        status: MovingRequestStatus.BOOKED,
         assignedDriverUserId: null
       },
       data: {
@@ -443,7 +816,7 @@ export const acceptMovingRequest = async (movingRequestId: string, driverUserId:
   await notifyRequester(
     movingRequest.requesterUserId,
     'Moving Request Accepted',
-    `Your moving request ${movingRequest.id} has been accepted by a driver.`
+    `Your moving request ${movingRequest.orderNumber} has been accepted by a driver.`
   );
 
   return normalizeMovingRequest(movingRequest);
@@ -518,19 +891,27 @@ const assertStatusTransition = (
     throw new ApiError(409, 'MOVING_REQUEST_FINALIZED', 'Moving request is already finalized.');
   }
 
-  if (
-    nextStatus === MovingRequestStatus.IN_PROGRESS &&
-    currentStatus !== MovingRequestStatus.ACCEPTED &&
-    currentStatus !== MovingRequestStatus.ASSIGNED
-  ) {
-    throw new ApiError(409, 'MOVING_STATUS_INVALID_TRANSITION', 'Moving request can enter in progress only after acceptance or assignment.');
+  if (nextStatus === MovingRequestStatus.CANCELLED) {
+    return;
   }
 
-  if (
-    nextStatus === MovingRequestStatus.COMPLETED &&
-    currentStatus !== MovingRequestStatus.IN_PROGRESS
-  ) {
-    throw new ApiError(409, 'MOVING_STATUS_INVALID_TRANSITION', 'Moving request can be completed only from in progress status.');
+  const expectedFromAccepted =
+    (currentStatus === MovingRequestStatus.ACCEPTED || currentStatus === MovingRequestStatus.ASSIGNED) &&
+    nextStatus === MovingRequestStatus.DRIVER_COMING;
+
+  if (expectedFromAccepted) {
+    return;
+  }
+
+  const currentIndex = DRIVER_STATUS_SEQUENCE.indexOf(currentStatus as UpdateMovingStatusInput['status']);
+  const nextIndex = DRIVER_STATUS_SEQUENCE.indexOf(nextStatus);
+
+  if (currentIndex === -1 || nextIndex !== currentIndex + 1) {
+    throw new ApiError(
+      409,
+      'MOVING_STATUS_INVALID_TRANSITION',
+      'Moving request status must advance one operational step at a time.'
+    );
   }
 };
 
@@ -568,7 +949,7 @@ export const updateMovingStatus = async (input: UpdateMovingStatusInput) => {
     await notifyRequester(
       updated.requesterUserId,
       'Moving Request Completed',
-      `Your moving request ${updated.id} has been marked as completed.`
+      `Your moving request ${updated.orderNumber} has been marked as completed.`
     );
   }
 
@@ -582,7 +963,7 @@ export const assignMovingRequestByAdmin = async (input: AssignMovingRequestInput
     const updateResult = await tx.movingRequest.updateMany({
       where: {
         id: input.movingRequestId,
-        status: MovingRequestStatus.PENDING,
+        status: MovingRequestStatus.BOOKED,
         assignedDriverUserId: null
       },
       data: {
@@ -640,13 +1021,13 @@ export const assignMovingRequestByAdmin = async (input: AssignMovingRequestInput
     notifyRequester(
       movingRequest.requesterUserId,
       'Moving Request Assigned',
-      `Your moving request ${movingRequest.id} was assigned by admin.`
+      `Your moving request ${movingRequest.orderNumber} was assigned by admin.`
     ),
     prisma.notification.create({
       data: {
         userId: input.driverUserId,
         title: 'Moving Request Assigned',
-        message: `You were assigned to moving request ${movingRequest.id}.`
+        message: `You were assigned to moving request ${movingRequest.orderNumber}.`
       }
     })
   ]);

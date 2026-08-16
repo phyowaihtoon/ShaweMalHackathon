@@ -13,7 +13,7 @@ import { SingleImageUploadField } from '@/components/uploads/SingleImageUploadFi
 import { ApiRequestError } from '@/lib/api/client'
 import { resolvePublicUploadUrl } from '@/lib/uploads/resolve-public-url'
 
-import { profileApi, reviewsApi } from '../api/profile-api'
+import { profileApi } from '../api/profile-api'
 
 type ProfileFormValues = {
   name: string
@@ -27,16 +27,6 @@ type PasswordFormValues = {
   confirmNewPassword: string
 }
 
-type ReviewFormValues = {
-  targetType: 'AGENT' | 'DRIVER'
-  targetUserId: string
-  rating: string
-  comment: string
-}
-
-const selectClassName =
-  'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
-
 export function ProfilePage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -47,8 +37,6 @@ export function ProfilePage() {
   const [profileError, setProfileError] = useState<string | null>(null)
   const [passwordMessage, setPasswordMessage] = useState<string | null>(null)
   const [passwordError, setPasswordError] = useState<string | null>(null)
-  const [reviewMessage, setReviewMessage] = useState<string | null>(null)
-  const [reviewError, setReviewError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!isBootstrapping && !isAuthenticated) {
@@ -78,15 +66,6 @@ export function ProfilePage() {
     },
   })
 
-  const reviewForm = useForm<ReviewFormValues>({
-    defaultValues: {
-      targetType: 'AGENT',
-      targetUserId: '',
-      rating: '5',
-      comment: '',
-    },
-  })
-
   const updateMutation = useMutation({
     mutationFn: profileApi.update,
     onSuccess: async () => {
@@ -109,18 +88,6 @@ export function ProfilePage() {
     },
     onError: (error) => {
       setPasswordError(error instanceof ApiRequestError ? error.message : t('profile.passwordFailed'))
-    },
-  })
-
-  const reviewMutation = useMutation({
-    mutationFn: reviewsApi.create,
-    onSuccess: () => {
-      setReviewMessage(t('profile.reviewSuccess'))
-      setReviewError(null)
-      reviewForm.reset({ targetType: 'AGENT', targetUserId: '', rating: '5', comment: '' })
-    },
-    onError: (error) => {
-      setReviewError(error instanceof ApiRequestError ? error.message : t('profile.reviewFailed'))
     },
   })
 
@@ -291,66 +258,6 @@ export function ProfilePage() {
             <Button type="submit" disabled={passwordMutation.isPending}>
               {passwordMutation.isPending ? t('common.loading') : t('profile.changePassword')}
             </Button>
-          </form>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">{t('profile.reviewTitle')}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form
-            className="grid gap-4 sm:grid-cols-2"
-            onSubmit={reviewForm.handleSubmit(async (values) => {
-              setReviewMessage(null)
-              setReviewError(null)
-              if (!values.targetUserId.trim()) {
-                setReviewError(t('auth.required'))
-                return
-              }
-              const rating = Number(values.rating)
-              if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
-                setReviewError(t('profile.ratingInvalid'))
-                return
-              }
-              await reviewMutation.mutateAsync({
-                targetType: values.targetType,
-                targetUserId: values.targetUserId.trim(),
-                rating,
-                comment: values.comment.trim() || undefined,
-              })
-            })}
-            noValidate
-          >
-            <Field label={t('profile.reviewTargetType')}>
-              <select className={selectClassName} {...reviewForm.register('targetType')}>
-                <option value="AGENT">{t('profile.targetAgent')}</option>
-                <option value="DRIVER">{t('profile.targetDriver')}</option>
-              </select>
-            </Field>
-            <Field label={t('profile.reviewRating')}>
-              <select className={selectClassName} {...reviewForm.register('rating')}>
-                {[5, 4, 3, 2, 1].map((value) => (
-                  <option key={value} value={String(value)}>
-                    {value}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <Field label={t('profile.reviewTargetUserId')} className="sm:col-span-2">
-              <Input {...reviewForm.register('targetUserId')} />
-            </Field>
-            <Field label={t('profile.reviewComment')} className="sm:col-span-2">
-              <Input {...reviewForm.register('comment')} />
-            </Field>
-            {reviewError ? <p className="text-sm text-destructive sm:col-span-2">{reviewError}</p> : null}
-            {reviewMessage ? <p className="text-sm text-primary sm:col-span-2">{reviewMessage}</p> : null}
-            <div className="sm:col-span-2">
-              <Button type="submit" disabled={reviewMutation.isPending}>
-                {reviewMutation.isPending ? t('common.loading') : t('profile.submitReview')}
-              </Button>
-            </div>
           </form>
         </CardContent>
       </Card>

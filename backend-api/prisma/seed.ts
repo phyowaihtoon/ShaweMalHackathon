@@ -47,10 +47,14 @@ const seedStatusCodes = async (): Promise<void> => {
     { entityType: 'Driver', code: 'PENDING', label: 'Pending', color: '#f59e0b' },
     { entityType: 'Driver', code: 'VERIFIED', label: 'Verified', color: '#10b981' },
     { entityType: 'Driver', code: 'REJECTED', label: 'Rejected', color: '#ef4444' },
-    { entityType: 'MovingRequest', code: 'PENDING', label: 'Pending', color: '#f59e0b' },
+    { entityType: 'MovingRequest', code: 'BOOKED', label: 'Booked', color: '#f59e0b' },
     { entityType: 'MovingRequest', code: 'ACCEPTED', label: 'Accepted', color: '#3b82f6' },
     { entityType: 'MovingRequest', code: 'ASSIGNED', label: 'Assigned', color: '#8b5cf6' },
-    { entityType: 'MovingRequest', code: 'IN_PROGRESS', label: 'In Progress', color: '#06b6d4' },
+    { entityType: 'MovingRequest', code: 'DRIVER_COMING', label: 'Driver Coming', color: '#06b6d4' },
+    { entityType: 'MovingRequest', code: 'DRIVER_ARRIVED', label: 'Driver Arrived', color: '#0ea5e9' },
+    { entityType: 'MovingRequest', code: 'LOADING', label: 'Loading', color: '#14b8a6' },
+    { entityType: 'MovingRequest', code: 'ON_THE_WAY', label: 'On the Way', color: '#22c55e' },
+    { entityType: 'MovingRequest', code: 'UNLOADING', label: 'Unloading', color: '#84cc16' },
     { entityType: 'MovingRequest', code: 'COMPLETED', label: 'Completed', color: '#10b981' },
     { entityType: 'MovingRequest', code: 'CANCELLED', label: 'Cancelled', color: '#ef4444' }
   ];
@@ -77,46 +81,54 @@ const seedStatusCodes = async (): Promise<void> => {
       }
     });
   }
+
+  await prisma.statusCode.updateMany({
+    where: {
+      entityType: 'MovingRequest',
+      code: { in: ['PENDING', 'IN_PROGRESS'] }
+    },
+    data: { isActive: false }
+  });
 };
 
 const YANGON_COUNTRY_CODE = 'MM';
 const YANGON_STATE_NAME = 'Yangon';
 
 const YANGON_TOWNSHIPS = [
-  'Ahlon Township',
-  'Bahan Township',
-  'Botataung Township',
-  'Dagon Seikkan Township',
-  'Dagon Township',
-  'Dala Township',
-  'Dawbon Township',
-  'East Dagon Township',
-  'Hlaing Township',
-  'Hlaingthaya East Township',
-  'Hlaingthaya Township',
-  'Insein Township',
-  'Kamayut Township',
-  'Kyauktada Township',
-  'Kyimyindaing Township',
-  'Lanmadaw Township',
-  'Latha Township',
-  'Mayangon Township',
-  'Mingala Taungnyunt Township',
-  'Mingaladon Township',
-  'North Dagon Township',
-  'North Okkalapa Township',
-  'Pabedan Township',
-  'Pazundaung Township',
-  'Sanchaung Township',
-  'Seikkan Township',
-  'Seikkyi Kanaungto Township',
-  'Shwepyitha Township',
-  'South Dagon Township',
-  'South Okkalapa Township',
-  'Tamwe Township',
-  'Thaketa Township',
-  'Thingangyun Township',
-  'Yankin Township'
+  'Ahlon',
+  'Bahan',
+  'Botataung',
+  'Dagon Seikkan',
+  'Dagon',
+  'Dala',
+  'Dawbon',
+  'East Dagon',
+  'Hlaing',
+  'Hlaingthaya East',
+  'Hlaingthaya',
+  'Insein',
+  'Kamayut',
+  'Kyauktada',
+  'Kyimyindaing',
+  'Lanmadaw',
+  'Latha',
+  'Mayangon',
+  'Mingala Taungnyunt',
+  'Mingaladon',
+  'North Dagon',
+  'North Okkalapa',
+  'Pabedan',
+  'Pazundaung',
+  'Sanchaung',
+  'Seikkan',
+  'Seikkyi Kanaungto',
+  'Shwepyitha',
+  'South Dagon',
+  'South Okkalapa',
+  'Tamwe',
+  'Thaketa',
+  'Thingangyun',
+  'Yankin'
 ] as const;
 
 const seedYangonLocations = async (): Promise<void> => {
@@ -138,6 +150,16 @@ const seedYangonLocations = async (): Promise<void> => {
   });
 
   for (const township of YANGON_TOWNSHIPS) {
+    await prisma.city.updateMany({
+      where: {
+        name: `${township} Township`,
+        stateId: yangonState.id
+      },
+      data: {
+        name: township
+      }
+    });
+
     await prisma.city.upsert({
       where: {
         name_stateId: {
@@ -193,26 +215,26 @@ const seedPropertyTypes = async (): Promise<void> => {
 
 const seedVehicleTypes = async (): Promise<void> => {
   const vehicleTypes = [
-    { name: 'Motorcycle', size: 'Very Small', capacityLabel: '1–2 boxes', maxLoadKg: 100 },
-    { name: 'Motorbike with Trailer', size: 'Small', capacityLabel: '3–5 boxes', maxLoadKg: 200 },
-    { name: 'Tuk-Tuk / Three-Wheeler', size: 'Small', capacityLabel: '5–8 boxes', maxLoadKg: 300 },
-    { name: 'Mini Pickup', size: 'Small', capacityLabel: '8–12 boxes', maxLoadKg: 500 },
-    { name: 'Pickup Truck', size: 'Small', capacityLabel: '10–15 boxes', maxLoadKg: 750 },
-    { name: 'Small Van', size: 'Small', capacityLabel: '15–25 boxes', maxLoadKg: 1000 },
-    { name: 'Mini Truck', size: 'Medium', capacityLabel: '20–35 boxes', maxLoadKg: 1500 },
-    { name: 'Light Truck', size: 'Medium', capacityLabel: '30–50 boxes', maxLoadKg: 2000 },
-    { name: 'Box Truck', size: 'Medium', capacityLabel: '40–60 boxes', maxLoadKg: 2500 },
-    { name: '10-ft Truck', size: 'Medium', capacityLabel: '50–70 boxes', maxLoadKg: 3000 },
-    { name: '12-ft Truck', size: 'Large', capacityLabel: '60–90 boxes', maxLoadKg: 4000 },
-    { name: '14-ft Truck', size: 'Large', capacityLabel: '70–100 boxes', maxLoadKg: 5000 },
-    { name: '16-ft Truck', size: 'Large', capacityLabel: '80–120 boxes', maxLoadKg: 6000 },
-    { name: '18-ft Truck', size: 'Large', capacityLabel: '100–140 boxes', maxLoadKg: 7000 },
-    { name: '20-ft Truck', size: 'Extra Large', capacityLabel: '120–180 boxes', maxLoadKg: 8000 },
-    { name: '22-ft Truck', size: 'Extra Large', capacityLabel: '140–200 boxes', maxLoadKg: 10000 },
-    { name: '24-ft Truck', size: 'Extra Large', capacityLabel: '160–220 boxes', maxLoadKg: 12000 },
-    { name: '26-ft Truck', size: 'Extra Large', capacityLabel: '180–250 boxes', maxLoadKg: 14000 },
-    { name: '30-ft Truck', size: 'Heavy Duty', capacityLabel: '220–300 boxes', maxLoadKg: 18000 },
-    { name: 'Container Truck', size: 'Heavy Duty', capacityLabel: '250–350+ boxes', maxLoadKg: 20000 }
+    { name: 'Motorcycle', size: 'Very Small', capacityLabel: '1–2 boxes', maxLoadKg: 100, pointFrom: 0, pointTo: 10, pricePerKm: 400 },
+    { name: 'Motorbike with Trailer', size: 'Small', capacityLabel: '3–5 boxes', maxLoadKg: 200, pointFrom: 11, pointTo: 20, pricePerKm: 500 },
+    { name: 'Tuk-Tuk / Three-Wheeler', size: 'Small', capacityLabel: '5–8 boxes', maxLoadKg: 300, pointFrom: 21, pointTo: 35, pricePerKm: 600 },
+    { name: 'Mini Pickup', size: 'Small', capacityLabel: '8–12 boxes', maxLoadKg: 500, pointFrom: 36, pointTo: 50, pricePerKm: 700 },
+    { name: 'Pickup Truck', size: 'Small', capacityLabel: '10–15 boxes', maxLoadKg: 750, pointFrom: 51, pointTo: 70, pricePerKm: 800 },
+    { name: 'Small Van', size: 'Small', capacityLabel: '15–25 boxes', maxLoadKg: 1000, pointFrom: 71, pointTo: 95, pricePerKm: 900 },
+    { name: 'Mini Truck', size: 'Medium', capacityLabel: '20–35 boxes', maxLoadKg: 1500, pointFrom: 96, pointTo: 130, pricePerKm: 1000 },
+    { name: 'Light Truck', size: 'Medium', capacityLabel: '30–50 boxes', maxLoadKg: 2000, pointFrom: 131, pointTo: 170, pricePerKm: 1100 },
+    { name: 'Box Truck', size: 'Medium', capacityLabel: '40–60 boxes', maxLoadKg: 2500, pointFrom: 171, pointTo: 210, pricePerKm: 1200 },
+    { name: '10-ft Truck', size: 'Medium', capacityLabel: '50–70 boxes', maxLoadKg: 3000, pointFrom: 211, pointTo: 260, pricePerKm: 1300 },
+    { name: '12-ft Truck', size: 'Large', capacityLabel: '60–90 boxes', maxLoadKg: 4000, pointFrom: 261, pointTo: 320, pricePerKm: 1400 },
+    { name: '14-ft Truck', size: 'Large', capacityLabel: '70–100 boxes', maxLoadKg: 5000, pointFrom: 321, pointTo: 390, pricePerKm: 1500 },
+    { name: '16-ft Truck', size: 'Large', capacityLabel: '80–120 boxes', maxLoadKg: 6000, pointFrom: 391, pointTo: 470, pricePerKm: 1600 },
+    { name: '18-ft Truck', size: 'Large', capacityLabel: '100–140 boxes', maxLoadKg: 7000, pointFrom: 471, pointTo: 560, pricePerKm: 1700 },
+    { name: '20-ft Truck', size: 'Extra Large', capacityLabel: '120–180 boxes', maxLoadKg: 8000, pointFrom: 561, pointTo: 660, pricePerKm: 1800 },
+    { name: '22-ft Truck', size: 'Extra Large', capacityLabel: '140–200 boxes', maxLoadKg: 10000, pointFrom: 661, pointTo: 780, pricePerKm: 1900 },
+    { name: '24-ft Truck', size: 'Extra Large', capacityLabel: '160–220 boxes', maxLoadKg: 12000, pointFrom: 781, pointTo: 920, pricePerKm: 2000 },
+    { name: '26-ft Truck', size: 'Extra Large', capacityLabel: '180–250 boxes', maxLoadKg: 14000, pointFrom: 921, pointTo: 1080, pricePerKm: 2100 },
+    { name: '30-ft Truck', size: 'Heavy Duty', capacityLabel: '220–300 boxes', maxLoadKg: 18000, pointFrom: 1081, pointTo: 1300, pricePerKm: 2200 },
+    { name: 'Container Truck', size: 'Heavy Duty', capacityLabel: '250–350+ boxes', maxLoadKg: 20000, pointFrom: 1301, pointTo: 9999, pricePerKm: 2500 }
   ];
 
   for (const vehicleType of vehicleTypes) {
@@ -222,6 +244,9 @@ const seedVehicleTypes = async (): Promise<void> => {
         capacityLabel: vehicleType.capacityLabel,
         maxLoadKg: vehicleType.maxLoadKg,
         description: vehicleType.size,
+        pointFrom: vehicleType.pointFrom,
+        pointTo: vehicleType.pointTo,
+        pricePerKm: vehicleType.pricePerKm,
         isActive: true
       },
       create: {
@@ -229,6 +254,9 @@ const seedVehicleTypes = async (): Promise<void> => {
         capacityLabel: vehicleType.capacityLabel,
         maxLoadKg: vehicleType.maxLoadKg,
         description: vehicleType.size,
+        pointFrom: vehicleType.pointFrom,
+        pointTo: vehicleType.pointTo,
+        pricePerKm: vehicleType.pricePerKm,
         isActive: true
       }
     });
@@ -313,17 +341,82 @@ const seedFloorLevels = async (): Promise<void> => {
       where: { name: floor.name },
       update: {
         levelNumber: floor.levelNumber,
+        surchargeAmount: floor.levelNumber * 5000,
         isActive: true
       },
       create: {
         name: floor.name,
         levelNumber: floor.levelNumber,
+        surchargeAmount: floor.levelNumber * 5000,
         isActive: true
       }
     });
   }
 
   console.log(`Floor levels seeded: ${FLOOR_LEVELS.length}`);
+};
+
+const MOVING_INVENTORY_ITEMS = [
+  { code: 'bedroom_single_bed', category: 'bedroom', itemName: 'Single bed', points: 8 },
+  { code: 'bedroom_couple_bed', category: 'bedroom', itemName: 'Couple bed', points: 12 },
+  { code: 'bedroom_king_bed', category: 'bedroom', itemName: 'King bed', points: 15 },
+  { code: 'bedroom_mattress', category: 'bedroom', itemName: 'Mattress', points: 6 },
+  { code: 'bedroom_wardrobe', category: 'bedroom', itemName: 'Wardrobe', points: 14 },
+  { code: 'bedroom_dressing_table', category: 'bedroom', itemName: 'Dressing table', points: 8 },
+  { code: 'bedroom_bedside_table', category: 'bedroom', itemName: 'Bedside table', points: 4 },
+  { code: 'bedroom_chair', category: 'bedroom', itemName: 'Chair', points: 3 },
+  { code: 'bedroom_study_table', category: 'bedroom', itemName: 'Study table', points: 6 },
+  { code: 'bedroom_bookshelf', category: 'bedroom', itemName: 'Bookshelf', points: 7 },
+  { code: 'living_sofa_2', category: 'living', itemName: 'Sofa (2 seats)', points: 12 },
+  { code: 'living_sofa_1', category: 'living', itemName: 'Sofa (1 seat)', points: 8 },
+  { code: 'living_coffee_table', category: 'living', itemName: 'Coffee table', points: 5 },
+  { code: 'living_tv', category: 'living', itemName: 'TV', points: 6 },
+  { code: 'living_tv_stand', category: 'living', itemName: 'TV Stand', points: 5 },
+  { code: 'living_shelf', category: 'living', itemName: 'Shelf', points: 5 },
+  { code: 'living_fan', category: 'living', itemName: 'Fan', points: 3 },
+  { code: 'living_air_conditioner', category: 'living', itemName: 'Air conditioner', points: 10 },
+  { code: 'kitchen_refrigerator', category: 'kitchen', itemName: 'Refrigerator', points: 14 },
+  { code: 'kitchen_microwave', category: 'kitchen', itemName: 'Microwave', points: 4 },
+  { code: 'kitchen_rice_cooker', category: 'kitchen', itemName: 'Rice cooker', points: 2 },
+  { code: 'kitchen_washing_machine', category: 'kitchen', itemName: 'Washing Machine', points: 12 },
+  { code: 'kitchen_water_dispenser', category: 'kitchen', itemName: 'Water Dispenser', points: 6 },
+  { code: 'kitchen_stove', category: 'kitchen', itemName: 'Stove', points: 5 },
+  { code: 'kitchen_dining_table', category: 'kitchen', itemName: 'Dining table', points: 8 },
+  { code: 'kitchen_dining_chair', category: 'kitchen', itemName: 'Dining chair', points: 2 },
+  { code: 'office_desktop', category: 'office', itemName: 'Desktop Computers', points: 6 },
+  { code: 'office_laptop', category: 'office', itemName: 'Laptop', points: 2 },
+  { code: 'office_printer', category: 'office', itemName: 'Printer', points: 4 },
+  { code: 'office_chair', category: 'office', itemName: 'Office chair', points: 3 },
+  { code: 'office_desk', category: 'office', itemName: 'Office Desk', points: 7 },
+  { code: 'other_bicycles', category: 'other', itemName: 'Bicycles', points: 8 },
+  { code: 'other_motorcycle', category: 'other', itemName: 'Motorcycle', points: 16 },
+  { code: 'other_plants', category: 'other', itemName: 'Plants', points: 2 },
+  { code: 'other_boxes', category: 'other', itemName: 'Boxes', points: 2 }
+] as const;
+
+const seedMovingInventoryItems = async (): Promise<void> => {
+  for (const [index, item] of MOVING_INVENTORY_ITEMS.entries()) {
+    await prisma.movingInventoryItemType.upsert({
+      where: { code: item.code },
+      update: {
+        category: item.category,
+        itemName: item.itemName,
+        points: item.points,
+        sortOrder: index + 1,
+        isActive: true
+      },
+      create: {
+        code: item.code,
+        category: item.category,
+        itemName: item.itemName,
+        points: item.points,
+        sortOrder: index + 1,
+        isActive: true
+      }
+    });
+  }
+
+  console.log(`Moving inventory items seeded: ${MOVING_INVENTORY_ITEMS.length}`);
 };
 
 const seedAdminUser = async (): Promise<void> => {
@@ -408,6 +501,7 @@ const main = async (): Promise<void> => {
   await seedVehicleTypes();
   await seedAmenities();
   await seedFloorLevels();
+  await seedMovingInventoryItems();
   await seedAdminUser();
 };
 

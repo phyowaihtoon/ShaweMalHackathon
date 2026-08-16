@@ -10,10 +10,14 @@ import { resolvePublicUploadUrl } from '@/lib/uploads/resolve-public-url'
 import { cn } from '@/lib/utils'
 
 import type { HouseListItem } from '../types'
+import { HouseAvailabilityBadge } from './HouseAvailabilityBadge'
 import { useWishlist } from '../hooks/useWishlist'
 
 type HouseCardProps = {
-  house: Pick<HouseListItem, 'id' | 'title' | 'monthlyFees' | 'propertyType' | 'city' | 'thumbnail' | 'bedrooms' | 'bathrooms'>
+  house: Pick<
+    HouseListItem,
+    'id' | 'title' | 'monthlyFees' | 'propertyType' | 'city' | 'thumbnail' | 'bedrooms' | 'bathrooms' | 'availability'
+  >
   className?: string
 }
 
@@ -62,6 +66,7 @@ export function HouseCard({ house, className }: HouseCardProps) {
               {t('houses.noPhoto')}
             </div>
           )}
+          <HouseAvailabilityBadge availability={house.availability} className="absolute left-2 top-2 shadow-sm" />
           <Button
             type="button"
             size="icon"

@@ -30,16 +30,21 @@ export type ProfileHistory = {
       title: string
       city?: { id: string; name: string } | null
       state?: { id: string; name: string } | null
+      agentId?: string
+      agent?: { id: string; name: string } | null
     } | null
+    myReview?: { id: string; rating: number; comment?: string | null } | null
   }>
   movingHistory: Array<{
     id: string
+    orderNumber?: string
     status: string
     pickupAddress: string
     dropoffAddress: string
     createdAt: string
     vehicleType?: { id: string; name: string } | null
     assignedDriver?: { id: string; name: string; phone?: string | null } | null
+    myReview?: { id: string; rating: number; comment?: string | null } | null
   }>
   notifications: {
     total: number
@@ -52,11 +57,4 @@ export type ProfileHistory = {
       createdAt: string
     }>
   }
-}
-
-export type ReviewCreateInput = {
-  targetType: 'AGENT' | 'DRIVER'
-  targetUserId: string
-  rating: number
-  comment?: string
 }

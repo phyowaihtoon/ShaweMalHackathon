@@ -27,9 +27,24 @@ export const driverRequestRejectValidator = [
   body('notes').optional().isString().withMessage('notes must be a string.')
 ];
 
+const DRIVER_STATUS_VALUES = [
+  'driver_coming',
+  'driver_arrived',
+  'loading',
+  'on_the_way',
+  'unloading',
+  'completed',
+  'cancelled'
+] as const;
+
+const DRIVER_ETA_STAGES = ['driver_coming', 'driver_arrived', 'loading', 'on_the_way', 'unloading'] as const;
+
 export const driverRequestEtaValidator = [
   ...requestIdParam,
-  body('stage').trim().notEmpty().withMessage('stage is required.'),
+  body('stage')
+    .trim()
+    .isIn([...DRIVER_ETA_STAGES])
+    .withMessage(`stage must be one of: ${DRIVER_ETA_STAGES.join(', ')}.`),
   body('etaAt').isISO8601().withMessage('etaAt must be a valid ISO date.'),
   body('notes').optional().isString().withMessage('notes must be a string.')
 ];
@@ -37,7 +52,7 @@ export const driverRequestEtaValidator = [
 export const driverRequestStatusValidator = [
   ...requestIdParam,
   body('status')
-    .isIn(['in_progress', 'completed', 'cancelled'])
-    .withMessage('status must be one of: in_progress, completed, cancelled.'),
+    .isIn([...DRIVER_STATUS_VALUES])
+    .withMessage(`status must be one of: ${DRIVER_STATUS_VALUES.join(', ')}.`),
   body('notes').optional().isString().withMessage('notes must be a string.')
 ];

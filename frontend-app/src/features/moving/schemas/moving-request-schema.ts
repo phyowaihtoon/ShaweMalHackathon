@@ -1,9 +1,20 @@
-import { MOVING_INVENTORY_CATALOG } from '../constants/inventory-catalog'
+import type { InventoryCatalogItem } from '../constants/inventory-catalog'
+import { hasMapPin } from '../lib/moving-location'
 import type { MovingInventoryItem } from '../types'
 
 export type MovingRequestFormValues = {
   pickupAddress: string
   dropoffAddress: string
+  pickupStreet: string
+  dropoffStreet: string
+  pickupTownship: string
+  dropoffTownship: string
+  pickupLatitude: string
+  pickupLongitude: string
+  dropoffLatitude: string
+  dropoffLongitude: string
+  pickupFloorLevelId: string
+  dropoffFloorLevelId: string
   moveInDate: string
   vehicleTypeId: string
   remarks: string
@@ -13,7 +24,6 @@ export type MovingRequestFormValues = {
   photo3: string
   photo4: string
   photo5: string
-  /** Screen-only total; not persisted as its own DB column. */
   totalInventoryItems: string
   inventoryCounts: Record<string, number>
 }
@@ -30,44 +40,87 @@ export function sumInventoryCounts(counts: Record<string, number>): number {
 
 export function buildInventoryItems(
   counts: Record<string, number>,
-  totalInventoryItems?: number,
-): MovingInventoryItem[] {
-  const items = MOVING_INVENTORY_CATALOG.map((item) => ({
-    category: item.category,
-    itemName: item.itemName,
-    count: Number(counts[item.key] ?? 0),
-  })).filter((item) => item.count > 0)
-
-  if (items.length > 0) {
-    return items
-  }
-
-  // Backend requires at least one inventory row; use screen total when no catalog lines were filled.
-  const total = Math.max(0, Math.floor(Number(totalInventoryItems) || 0))
-  if (total > 0) {
-    return [{ category: 'other', itemName: 'Total inventory items', count: total }]
-  }
-
-  return []
+  catalog: InventoryCatalogItem[],
+): Array<MovingInventoryItem & { inventoryItemTypeId: string }> {
+  return catalog
+    .map((item) => ({
+      inventoryItemTypeId: item.id,
+      category: item.category,
+      itemName: item.itemName,
+      count: Number(counts[item.id] ?? 0),
+    }))
+    .filter((item) => item.count > 0)
 }
 
-export function validateMovingRequestForm(
+export function validateMovingStep1(
+  values: Pick<
+    MovingRequestFormValues,
+    | 'pickupAddress'
+    | 'dropoffAddress'
+    | 'pickupTownship'
+    | 'dropoffTownship'
+    | 'pickupLatitude'
+    | 'pickupLongitude'
+    | 'dropoffLatitude'
+    | 'dropoffLongitude'
+  >,
+  t: (key: string) => string,
+  townshipNames: string[] = [],
+) {
+  const errors: Partial<
+    Record<
+      | 'pickupAddress'
+      | 'dropoffAddress'
+      | 'pickupTownship'
+      | 'dropoffTownship'
+      | 'pickupLatitude'
+      | 'dropoffLatitude',
+      string
+    >
+  > = {}
+
+  if (!values.pickupTownship.trim()) errors.pickupTownship = t('auth.required')
+  if (!values.dropoffTownship.trim()) errors.dropoffTownship = t('auth.required')
+
+  if (
+    townshipNames.length > 0 &&
+    values.pickupTownship.trim() &&
+    !townshipNames.includes(values.pickupTownship.trim())
+  ) {
+    errors.pickupTownship = t('moving.townshipInvalid')
+  }
+  if (
+    townshipNames.length > 0 &&
+    values.dropoffTownship.trim() &&
+    !townshipNames.includes(values.dropoffTownship.trim())
+  ) {
+    errors.dropoffTownship = t('moving.townshipInvalid')
+  }
+
+  if (!values.pickupAddress.trim()) errors.pickupAddress = t('auth.required')
+  if (!values.dropoffAddress.trim()) errors.dropoffAddress = t('auth.required')
+  if (!hasMapPin(values.pickupLatitude, values.pickupLongitude)) {
+    errors.pickupLatitude = t('moving.mapPinRequired')
+  }
+  if (!hasMapPin(values.dropoffLatitude, values.dropoffLongitude)) {
+    errors.dropoffLatitude = t('moving.mapPinRequired')
+  }
+  return errors
+}
+
+export function validateMovingStep2(
   values: MovingRequestFormValues,
   t: (key: string) => string,
 ) {
   const errors: Partial<
-    Record<keyof MovingRequestFormValues | 'photos' | 'totalInventoryItems', string>
+    Record<'pickupFloorLevelId' | 'dropoffFloorLevelId' | 'photos' | 'totalInventoryItems', string>
   > = {}
 
-  if (!values.pickupAddress.trim()) errors.pickupAddress = t('auth.required')
-  if (!values.dropoffAddress.trim()) errors.dropoffAddress = t('auth.required')
-  if (!values.moveInDate.trim()) errors.moveInDate = t('auth.required')
-  if (!values.vehicleTypeId.trim()) errors.vehicleTypeId = t('auth.required')
+  if (!values.pickupFloorLevelId.trim()) errors.pickupFloorLevelId = t('auth.required')
+  if (!values.dropoffFloorLevelId.trim()) errors.dropoffFloorLevelId = t('auth.required')
 
   const photos = collectPhotoPaths(values)
-  if (photos.length < 1) {
-    errors.photos = t('moving.photosRequired')
-  } else if (photos.length > 5) {
+  if (photos.length > 5) {
     errors.photos = t('moving.photosMax')
   }
 
@@ -77,4 +130,25 @@ export function validateMovingRequestForm(
   }
 
   return errors
+}
+
+export function validateMovingStep3(
+  values: Pick<MovingRequestFormValues, 'moveInDate' | 'vehicleTypeId'>,
+  t: (key: string) => string,
+) {
+  const errors: Partial<Record<'moveInDate' | 'vehicleTypeId', string>> = {}
+  if (!values.moveInDate.trim()) errors.moveInDate = t('auth.required')
+  if (!values.vehicleTypeId.trim()) errors.vehicleTypeId = t('auth.required')
+  return errors
+}
+
+export function validateMovingRequestForm(
+  values: MovingRequestFormValues,
+  t: (key: string) => string,
+) {
+  return {
+    ...validateMovingStep1(values, t),
+    ...validateMovingStep2(values, t),
+    ...validateMovingStep3(values, t),
+  }
 }

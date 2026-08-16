@@ -72,12 +72,12 @@ Ensure `uploads/{houses,moving,docs,profile}` exist (created on boot). Binaries 
 | Registrations | `POST /registrations/agent`, `POST /registrations/driver` |
 | Agent | `POST /agent/profile`, CRUD `/agent/houses`, `GET /agent/bookings` |
 | Driver | profile + moving request accept/reject/eta/status |
-| Moving | `POST /moving/requests`, `GET /moving/requests/:id` |
+| Moving | `POST /moving/quote`, `POST /moving/requests`, `GET /moving/requests`, `GET /moving/requests/:id` |
 | Uploads | `POST /uploads?category=...` |
 | Files | `GET /files/docs/:filename` (protected) |
 | Roommates | `GET/POST /roommates` |
 | Wishlist | `GET/POST/DELETE /wishlist/:houseId` |
-| Reviews | `GET/POST /reviews` |
+| Reviews | `GET/POST /reviews` (POST upserts by `bookingId` or `movingRequestId`) |
 | Notifications | `GET /notifications`, `PATCH /notifications/:id/read` |
 | Public master data | `GET /master-data/:entity` |
 | Admin | users, verification, moving assignment, overview reports, `GET /admin/reports/bookings` |
@@ -92,12 +92,12 @@ Implemented requirement groups:
 - FR-HOUSE-001..008 — search, details, booking, confirmation status, duplicate rule, user cancel
 - FR-AGENT-001..004 — self-service registration + verified agent CRUD + house bookings
 - FR-DRIVER-001..006 — self-service registration + moving workflow + estimated earnings
-- FR-MOVE-001..005 — moving request lifecycle
+- FR-MOVE-001..007 — moving request lifecycle, quote, and Moving Status tracking
 - FR-ROOM-001..002 — roommate browse/post
 - FR-PROFILE-001..004 — profile, history, reviews, logout via refresh revoke
 - FR-NOTI-001 — in-app notifications for core events
 - FR-ADMIN-001..007 — verification, users, roles, master data, overview reports, house booking report
-- MD-001..011 — master data CRUD including roles
+- MD-001..012 — master data CRUD including roles and moving inventory items
 
 ## Notes
 

@@ -1,0 +1,157 @@
+import { useTranslation } from 'react-i18next'
+import type { FieldErrors, UseFormRegister } from 'react-hook-form'
+
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { MultiImageUploadField } from '@/components/uploads/MultiImageUploadField'
+import type { MasterDataItem } from '@/features/master-data/types'
+
+import type { InventoryCatalogItem } from '../constants/inventory-catalog'
+import { INVENTORY_CATEGORY_ORDER } from '../constants/inventory-catalog'
+import type { MovingRequestFormValues } from '../schemas/moving-request-schema'
+import { HireMovingField } from './HireMovingField'
+
+const textareaClassName =
+  'flex min-h-20 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+
+const selectClassName =
+  'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+
+export function HireMovingStepDetails({
+  pickupAddress,
+  dropoffAddress,
+  register,
+  errors,
+  floors,
+  catalog,
+  inventoryCounts,
+  totalInventoryItems,
+  photoPaths,
+  onPhotoChange,
+  onInventoryChange,
+  onBack,
+}: {
+  pickupAddress: string
+  dropoffAddress: string
+  register: UseFormRegister<MovingRequestFormValues>
+  errors: FieldErrors<MovingRequestFormValues>
+  floors: MasterDataItem[]
+  catalog: InventoryCatalogItem[]
+  inventoryCounts: Record<string, number>
+  totalInventoryItems: string
+  photoPaths: string[]
+  onPhotoChange: (paths: string[]) => void
+  onInventoryChange: (id: string, count: number) => void
+  onBack: () => void
+}) {
+  const { t } = useTranslation()
+  const catalogByCategory = INVENTORY_CATEGORY_ORDER.map((category) => ({
+    category,
+    items: catalog.filter((item) => item.category === category),
+  })).filter((group) => group.items.length > 0)
+
+  return (
+    <div className="space-y-6">
+      <div className="flex w-full flex-wrap justify-end gap-2">
+        <Button type="button" variant="outline" onClick={onBack}>
+          {t('moving.back')}
+        </Button>
+        <Button type="submit">{t('moving.continue')}</Button>
+      </div>
+
+      <div className="rounded-md border bg-muted/40 p-4 text-sm">
+        <p>
+          <span className="font-medium">{t('moving.pickupAddress')}: </span>
+          {pickupAddress}
+        </p>
+        <p>
+          <span className="font-medium">{t('moving.dropoffAddress')}: </span>
+          {dropoffAddress}
+        </p>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <HireMovingField label={t('moving.pickupFloor')} error={errors.pickupFloorLevelId?.message}>
+          <select className={selectClassName} {...register('pickupFloorLevelId')}>
+            <option value="">{t('houses.filters.any')}</option>
+            {floors.map((floor) => (
+              <option key={floor.id} value={floor.id}>
+                {floor.name}
+              </option>
+            ))}
+          </select>
+        </HireMovingField>
+        <HireMovingField label={t('moving.dropoffFloor')} error={errors.dropoffFloorLevelId?.message}>
+          <select className={selectClassName} {...register('dropoffFloorLevelId')}>
+            <option value="">{t('houses.filters.any')}</option>
+            {floors.map((floor) => (
+              <option key={floor.id} value={floor.id}>
+                {floor.name}
+              </option>
+            ))}
+          </select>
+        </HireMovingField>
+       
+      </div>
+
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-lg font-medium">{t('moving.inventoryTitle')}</h2>
+          <p className="text-sm text-muted-foreground">{t('moving.inventoryHint')}</p>
+        </div>
+        {catalogByCategory.map(({ category, items }) => (
+          <div key={category} className="space-y-2 rounded-md border p-4">
+            <h3 className="font-medium">{t(`moving.categories.${category}`)}</h3>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {items.map((item) => (
+                <label key={item.id} className="flex items-center justify-between gap-2 text-sm">
+                  <span>
+                    {item.itemName}
+                    <span className="ml-1 text-xs text-muted-foreground">({item.points} pts)</span>
+                  </span>
+                  <Input
+                    type="number"
+                    min={0}
+                    className="w-20"
+                    value={inventoryCounts[item.id] ?? 0}
+                    onChange={(event) => {
+                      const next = Math.max(0, Number(event.target.value) || 0)
+                      onInventoryChange(item.id, next)
+                    }}
+                  />
+                </label>
+              ))}
+            </div>
+          </div>
+        ))}
+      </section>
+
+      <HireMovingField
+        label={t('moving.totalInventoryItems')}
+        error={errors.totalInventoryItems?.message}
+        className="max-w-xs"
+      >
+        <Input type="number" disabled readOnly value={totalInventoryItems} tabIndex={-1} />
+      </HireMovingField>
+
+      <section className="space-y-3">
+        <h2 className="text-lg font-medium">{t('moving.photosTitle')}</h2>
+        <p className="text-sm text-muted-foreground">{t('moving.photosHint')}</p>
+        <MultiImageUploadField
+          paths={photoPaths}
+          onChange={onPhotoChange}
+          category="moving"
+          maxFiles={5}
+          error={errors.photo1?.message}
+        />
+      </section>
+
+      <HireMovingField label={t('moving.damageChecklist')} error={errors.damageChecklist?.message} className="sm:col-span-2">
+          <textarea className={textareaClassName} {...register('damageChecklist')} />
+        </HireMovingField>
+        <HireMovingField label={t('moving.remarks')} error={errors.remarks?.message} className="sm:col-span-2">
+          <textarea className={textareaClassName} {...register('remarks')} />
+        </HireMovingField>
+    </div>
+  )
+}

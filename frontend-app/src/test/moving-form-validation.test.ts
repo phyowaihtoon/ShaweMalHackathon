@@ -1,19 +1,35 @@
 import { describe, expect, it } from 'vitest'
 
-import { emptyInventoryCounts } from '@/features/moving/constants/inventory-catalog'
 import {
   buildInventoryItems,
   collectPhotoPaths,
   validateMovingRequestForm,
+  validateMovingStep1,
+  validateMovingStep2,
+  validateMovingStep3,
   type MovingRequestFormValues,
 } from '@/features/moving/schemas/moving-request-schema'
 
 const t = (key: string) => key
 
+const catalog = [
+  { id: 'inv-bed', code: 'bedroom_single_bed', category: 'bedroom', itemName: 'Single bed', points: 8 },
+]
+
 function baseValues(overrides: Partial<MovingRequestFormValues> = {}): MovingRequestFormValues {
   return {
-    pickupAddress: 'Pickup St',
-    dropoffAddress: 'Dropoff St',
+    pickupAddress: 'Pickup St, Kamayut Township, Yangon, Myanmar',
+    dropoffAddress: 'Dropoff St, Bahan Township, Yangon, Myanmar',
+    pickupStreet: 'Pickup St',
+    dropoffStreet: 'Dropoff St',
+    pickupTownship: 'Kamayut Township',
+    dropoffTownship: 'Bahan Township',
+    pickupLatitude: '16.82',
+    pickupLongitude: '96.13',
+    dropoffLatitude: '16.81',
+    dropoffLongitude: '96.17',
+    pickupFloorLevelId: 'floor-1',
+    dropoffFloorLevelId: 'floor-2',
     moveInDate: '2026-09-01',
     vehicleTypeId: 'vt1',
     remarks: '',
@@ -25,8 +41,7 @@ function baseValues(overrides: Partial<MovingRequestFormValues> = {}): MovingReq
     photo5: '',
     totalInventoryItems: '2',
     inventoryCounts: {
-      ...emptyInventoryCounts(),
-      bedroom_single_bed: 2,
+      'inv-bed': 2,
     },
     ...overrides,
   }
@@ -39,42 +54,67 @@ describe('moving request form validation', () => {
 
     expect(errors).toEqual({})
     expect(collectPhotoPaths(values)).toEqual(['uploads/moving/p1.jpg'])
-    expect(buildInventoryItems(values.inventoryCounts, Number(values.totalInventoryItems))).toEqual([
-      { category: 'bedroom', itemName: 'Single bed', count: 2 },
+    expect(buildInventoryItems(values.inventoryCounts, catalog)).toEqual([
+      { inventoryItemTypeId: 'inv-bed', category: 'bedroom', itemName: 'Single bed', count: 2 },
     ])
   })
 
-  it('requires addresses, date, vehicle, photos, and total inventory items > 0', () => {
-    const errors = validateMovingRequestForm(
+  it('blocks step 1 without townships and map pins', () => {
+    const errors = validateMovingStep1(
       baseValues({
         pickupAddress: '',
         dropoffAddress: '',
-        moveInDate: '',
-        vehicleTypeId: '',
-        photo1: '',
+        pickupTownship: '',
+        dropoffTownship: '',
+        pickupLatitude: '',
+        pickupLongitude: '',
+        dropoffLatitude: '',
+        dropoffLongitude: '',
+      }),
+      t,
+      ['Kamayut Township', 'Bahan Township'],
+    )
+    expect(errors.pickupTownship).toBe('auth.required')
+    expect(errors.dropoffTownship).toBe('auth.required')
+    expect(errors.pickupLatitude).toBe('moving.mapPinRequired')
+    expect(errors.dropoffLatitude).toBe('moving.mapPinRequired')
+  })
+
+  it('rejects a township that is not in the Yangon list', () => {
+    const errors = validateMovingStep1(
+      baseValues({ pickupTownship: 'Mandalay' }),
+      t,
+      ['Kamayut Township', 'Bahan Township'],
+    )
+    expect(errors.pickupTownship).toBe('moving.townshipInvalid')
+  })
+
+  it('blocks step 2 when inventory total is zero', () => {
+    const errors = validateMovingStep2(
+      baseValues({
         totalInventoryItems: '0',
-        inventoryCounts: emptyInventoryCounts(),
+        inventoryCounts: { 'inv-bed': 0 },
+        photo1: '',
+        pickupFloorLevelId: '',
+        dropoffFloorLevelId: '',
       }),
       t,
     )
 
-    expect(errors.pickupAddress).toBe('auth.required')
-    expect(errors.dropoffAddress).toBe('auth.required')
-    expect(errors.moveInDate).toBe('auth.required')
-    expect(errors.vehicleTypeId).toBe('auth.required')
-    expect(errors.photos).toBe('moving.photosRequired')
+    expect(errors.pickupFloorLevelId).toBe('auth.required')
+    expect(errors.dropoffFloorLevelId).toBe('auth.required')
+    expect(errors.photos).toBeUndefined()
     expect(errors.totalInventoryItems).toBe('moving.totalInventoryRequired')
-    expect(errors.inventoryCounts).toBeUndefined()
   })
 
-  it('passes when total inventory is set even if catalog counts are empty', () => {
-    const values = baseValues({
-      totalInventoryItems: '5',
-      inventoryCounts: emptyInventoryCounts(),
-    })
-    expect(validateMovingRequestForm(values, t)).toEqual({})
-    expect(buildInventoryItems(values.inventoryCounts, 5)).toEqual([
-      { category: 'other', itemName: 'Total inventory items', count: 5 },
-    ])
+  it('blocks step 3 without a move-in date or vehicle type', () => {
+    const errors = validateMovingStep3(baseValues({ moveInDate: '', vehicleTypeId: '' }), t)
+    expect(errors.moveInDate).toBe('auth.required')
+    expect(errors.vehicleTypeId).toBe('auth.required')
+  })
+
+  it('requires vehicle type only on the full confirm payload', () => {
+    const errors = validateMovingRequestForm(baseValues({ vehicleTypeId: '' }), t)
+    expect(errors.vehicleTypeId).toBe('auth.required')
   })
 })

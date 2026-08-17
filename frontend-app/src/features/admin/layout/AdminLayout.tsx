@@ -9,13 +9,14 @@ import { cn } from '@/lib/utils'
 
 const navItems = [
   { to: '/admin/dashboard', labelKey: 'admin.nav.dashboard' },
+  { to: '/admin/master-data', labelKey: 'admin.nav.masterData' },
   { to: '/admin/verifications/agents', labelKey: 'admin.nav.agentVerification' },
   { to: '/admin/verifications/drivers', labelKey: 'admin.nav.driverVerification' },
   { to: '/admin/users', labelKey: 'admin.nav.users' },
-  { to: '/admin/moving-assign', labelKey: 'admin.nav.movingAssign' },
-  { to: '/admin/master-data', labelKey: 'admin.nav.masterData' },
-  { to: '/admin/reports', labelKey: 'admin.nav.reports' },
+  { to: '/admin/jobs-assign', labelKey: 'admin.nav.jobsAssign' },
+  { to: '/admin/reports/moving', labelKey: 'admin.nav.movingReport' },
   { to: '/admin/reports/bookings', labelKey: 'admin.nav.bookingReport' },
+  { to: '/admin/reports', labelKey: 'admin.nav.reports' },
 ] as const
 
 export function AdminLayout() {

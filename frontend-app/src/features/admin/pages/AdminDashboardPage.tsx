@@ -59,10 +59,13 @@ export function AdminDashboardPage() {
                 <Link to="/admin/reports/bookings">{t('admin.nav.bookingReport')}</Link>
               </Button>
               <Button asChild variant="secondary">
+                <Link to="/admin/reports/moving">{t('admin.nav.movingReport')}</Link>
+              </Button>
+              <Button asChild variant="secondary">
                 <Link to="/admin/users">{t('admin.nav.users')}</Link>
               </Button>
               <Button asChild variant="secondary">
-                <Link to="/admin/moving-assign">{t('admin.nav.movingAssign')}</Link>
+                <Link to="/admin/jobs-assign">{t('admin.nav.jobsAssign')}</Link>
               </Button>
               <Button asChild variant="secondary">
                 <Link to="/admin/master-data">{t('admin.nav.masterData')}</Link>

@@ -4,12 +4,14 @@
 - **Project Name**: ShweMal
 - **Document Type**: Software Requirement Specification (SRS)
 - **Platform**: Web Application
-- **Version**: 1.3
-- **Date**: 2026-08-16
+- **Version**: 1.5
+- **Date**: 2026-08-17
 - **Prepared For**: Product, Design, Development, QA, and Operations Teams
 - **Revision 1.1**: House booking workflow rewritten (confirmation page, confirmed-on-submit, duplicate prevention, agent booking list/cancel, cancellation actor tracking, dedicated admin house booking report). Application implementation of this workflow is pending a separate build confirmation.
 - **Revision 1.2**: Moving request lifecycle statuses finalized (Booked plus operational delivery steps). Moving Status screen specified for tracking one or more bookings (FR-MOVE-007).
 - **Revision 1.3**: Ratings moved out of Profile. Users rate agents after a confirmed booking and drivers after a completed move using 1–5 stars; one rating per job with upsert.
+- **Revision 1.4**: Dedicated admin Moving service request report (FR-ADMIN-008) with date/status filters and a full request details view.
+- **Revision 1.5**: Admin **Moving Assign** renamed to **Jobs Assign** (FR-MOVE-005). Admin assigns booked unassigned jobs and jobs cancelled by the assigned driver, searching by order number and choosing a verified driver (name, phone, vehicle, plate) without internal IDs. Reassignment sets status to **Assigned**.
 
 ---
 
@@ -61,7 +63,7 @@ The application contains:
 5. **Admin**
 - Uses admin portal only.
 - Verifies agents and drivers.
-- Creates users, assigns roles, manages master data, and views reports (including a dedicated house booking report).
+- Creates users, assigns roles, manages master data, and views reports (including dedicated house booking and moving service request reports).
 
 ---
 
@@ -88,10 +90,12 @@ The application contains:
 - Moving Status
 - Finding Roommates
 - Post Housing Information (visible only to users with the agent role; opens agent housing manage/post flow)
+- Driver Jobs (visible only to users with the driver role; available jobs to accept/reject, plus assigned in-progress jobs to update until completed)
 
 ## 5.2 Admin Portal
 - Accessible only by admin role.
-- Contains all administrative modules.
+- Contains all administrative modules, including **Jobs Assign**.
+- **Jobs Assign** lets admin assign a verified driver to booked unassigned moving jobs and to jobs cancelled by the assigned driver (FR-MOVE-005).
 
 ---
 
@@ -235,6 +239,8 @@ The application contains:
 - Driver must be verified by admin before participating in moving jobs.
 
 ### FR-DRIVER-003 Moving Request Response
+- Users with the driver role shall access **Driver Jobs** from the public portal sub-header.
+- Driver Jobs shall show **Available jobs** (new requests to accept or reject) separately from **My jobs** (assigned in-progress work).
 - Driver shall receive notifications for new moving requests.
 - Driver shall be able to accept or reject notified moving requests.
 - For each moving request, only the first accepted response shall be confirmed.
@@ -242,8 +248,10 @@ The application contains:
 
 ### FR-DRIVER-004 Process ETA Entry
 - Driver shall be able to enter estimated time for each moving process stage.
+- ETA time shall not be earlier than the job move-in date.
 
 ### FR-DRIVER-005 Job Details Visibility
+- Driver shall see assigned in-progress jobs in Driver Jobs **My jobs**. Completed, cancelled, and rejected jobs shall not appear in that list.
 - Driver shall view for assigned job:
   - Pick up address
   - Drop off address
@@ -254,7 +262,11 @@ The application contains:
   - Damage checklist
 
 ### FR-DRIVER-006 Delivery Status Update
-- Driver shall update delivery status throughout the moving lifecycle in order: Driver Coming, Driver Arrived, Loading, On the Way, Unloading, then Completed.
+- Driver Jobs **Update status** shall show delivery status update and job details in side-by-side panels (status update first on the left).
+- Delivery status update and Process ETA shall be separate sections; delivery status update comes first.
+- Driver shall advance delivery status one step at a time via the next operational step action (Driver Coming → Driver Arrived → Loading → On the Way → Unloading → Completed).
+- After a successful status update, the confirmation message shall include the updated status label (for example Driver Coming, On the Way).
+- Driver may cancel an assigned in-progress job from **My jobs** without opening **Update status**; cancellation requires a mandatory reason note.
 - Driver may cancel a request that is not yet Completed or Cancelled.
 
 ## 7.6 Hire Moving Service Module
@@ -284,7 +296,12 @@ The application contains:
 - After status changes to **Accepted**, other drivers shall not be able to accept that request.
 
 ### FR-MOVE-005 Admin Fallback Assignment
-- If no driver accepts a moving request, admin shall be able to assign the request to a specific verified driver.
+- Admin shall assign a moving request to a specific verified driver from **Jobs Assign**, without entering internal request or user IDs.
+- Jobs Assign shall list:
+  - booked jobs with no assigned driver, and
+  - jobs **cancelled by the assigned driver**.
+- Admin shall be able to search that queue by **order number**, preview the job, and choose a verified driver from a list (name, phone, vehicle, plate).
+- After assignment or reassignment, status shall change to **Assigned**.
 
 ### FR-MOVE-007 Moving Status
 - Authenticated users shall open **Moving Status** to track their moving requests.
@@ -345,9 +362,15 @@ The application contains:
 ## 7.11 Admin Portal
 ### FR-ADMIN-001 Agent Verification
 - Admin shall verify/reject housing agent registrations.
+- Admin shall browse an agent verification queue (default: pending), review registration details and documents, then approve or reject. A rejection reason is optional.
+- Agent verification status is stored on the agent profile and is independent of driver verification on the same account.
+- Admins shall not need to know the user’s internal primary key to complete this workflow.
 
 ### FR-ADMIN-002 Driver Verification
 - Admin shall verify/reject driver registrations.
+- Admin shall browse a driver verification queue (default: pending), review registration details and documents, then approve or reject. A rejection reason is optional.
+- Driver verification status is stored on the driver profile and is independent of agent verification on the same account.
+- Admins shall not need to know the user’s internal primary key to complete this workflow.
 
 ### FR-ADMIN-003 User Account Creation
 - Admin shall create user accounts.
@@ -372,6 +395,14 @@ The application contains:
   - Booking status
 - Additional filter criteria (house, listing agent, booking user) are should-have.
 - Each record shall include: booking id, booking date, status, house, listing agent, booker identity, and cancelled-by (booking user or agent) when the booking is cancelled.
+
+### FR-ADMIN-008 Moving Service Request Report
+- Admin shall have a **Moving service request report**, separate from the overview dashboard, that lists all moving service requests.
+- Admin shall be able to filter the report by at least:
+  - Request created date (from / to)
+  - Request status (Booked, Accepted, Assigned, Driver Coming, Driver Arrived, Loading, On the Way, Unloading, Completed, Cancelled)
+- Each record shall include: order number, request date, status, pickup and drop-off, move-in date, requester identity, assigned driver when present, and estimated price.
+- Admin shall be able to open **View details** from the list to see the full moving service request information (addresses, floors, quote, inventory, photos, remarks, damage checklist, requester, assigned driver, status history, and ETA entries).
 
 ---
 
@@ -736,8 +767,8 @@ The following reference data objects are identified as likely admin-managed mast
 ## 9. Business Rules
 1. Visitors can search and view houses without registration.
 2. Booking a house requires authenticated user account.
-3. Posting housing listings requires agent role and admin verification status = Verified.
-4. Participating in moving jobs requires driver role and admin verification status = Verified.
+3. Posting housing listings requires agent role and agent profile verification status = Verified.
+4. Participating in moving jobs requires driver role and driver profile verification status = Verified.
 5. Only admin can access admin portal modules.
 6. Role assignment is controlled by admin.
 7. After a successful house booking, the user is shown a dedicated confirmation page (not a popup) with a thank-you statement that includes that the agent will contact the user soon, and is offered hire moving service from that page.
@@ -755,27 +786,30 @@ The following reference data objects are identified as likely admin-managed mast
 19. On moving request submission, system sends notification to all verified drivers. The request status is **Booked**.
 20. The first driver who accepts a moving request is assigned to that request and status changes to **Accepted**.
 21. Once a moving request is **Accepted**, other drivers cannot accept the same request.
-22. If no driver accepts a request, admin can manually assign it to a specific verified driver and status changes to **Assigned**.
-23. Hire Moving Service uses a four-stage wizard. The moving request is persisted only when the user confirms booking.
-24. Estimated moving price = pickup floor surcharge + drop-off floor surcharge + (selected vehicle PricePerKM × distance in kilometers). Floor surcharges and PricePerKM come from master data. Distance is calculated from geocoded pickup and drop-off addresses.
-25. Each confirmed moving request receives a unique order number for tracking by the user, driver, and admin.
-26. A user may confirm more than one moving request. Moving Status lists all of that user’s requests and tracks the selected request through the §10.5 statuses.
-27. Ratings use a 1 to 5 star control. The booking user may rate the listing agent after a **Confirmed** house booking, and the requester may rate the assigned driver after a **Completed** moving request. One rating per booking or moving request; submitting again updates it. Ratings are not collected on the Profile page.
+22. If no driver accepts a request, admin can assign it from **Jobs Assign** to a specific verified driver (by order number search or from the assignable jobs list) and status changes to **Assigned**.
+23. If the assigned driver cancels, admin can reassign that cancelled job from Jobs Assign.
+24. Hire Moving Service uses a four-stage wizard. The moving request is persisted only when the user confirms booking.
+25. Estimated moving price = pickup floor surcharge + drop-off floor surcharge + (selected vehicle PricePerKM × distance in kilometers). Floor surcharges and PricePerKM come from master data. Distance is calculated from geocoded pickup and drop-off addresses.
+26. Each confirmed moving request receives a unique order number for tracking by the user, driver, and admin.
+27. A user may confirm more than one moving request. Moving Status lists all of that user’s requests and tracks the selected request through the §10.5 statuses.
+28. Ratings use a 1 to 5 star control. The booking user may rate the listing agent after a **Confirmed** house booking, and the requester may rate the assigned driver after a **Completed** moving request. One rating per booking or moving request; submitting again updates it. Ratings are not collected on the Profile page.
 
 ---
 
 ## 10. Workflow Requirements
 
 ## 10.1 Agent Verification Flow
-1. Agent submits registration.
-2. Admin reviews details/documents.
-3. Admin approves or rejects.
-4. If approved, agent can post housing listings.
+1. Agent submits registration (agent profile verification status = Pending).
+2. Admin opens the **Agent verification** queue (default filter: Pending) and selects a registration. The admin does not enter a user id.
+3. Admin reviews details and documents.
+4. Admin approves or rejects (optional rejection reason). The applicant receives an in-app notification.
+5. If approved, agent can post housing listings.
 
 ## 10.2 Driver Verification Flow
-1. Driver submits registration with vehicle/legal documents.
-2. Admin reviews and verifies.
-3. Verified driver becomes eligible for assigned moving jobs.
+1. Driver submits registration with vehicle/legal documents (driver profile verification status = Pending).
+2. Admin opens the **Driver verification** queue (default filter: Pending) and selects a registration. The admin does not enter a user id.
+3. Admin reviews details and documents, then approves or rejects (optional rejection reason). The applicant receives an in-app notification.
+4. Verified driver becomes eligible for assigned moving jobs.
 
 ## 10.3 House Booking Workflow
 1. User selects a house and books (authenticated; visitors are redirected to sign in).
@@ -810,12 +844,13 @@ The following reference data objects are identified as likely admin-managed mast
 4. Drivers review request and accept/reject.
 5. First accepting driver is assigned automatically and request status changes to **Accepted**.
 6. Other drivers can no longer accept that request.
-7. If no driver accepts, admin assigns request to a specific verified driver and status changes to **Assigned**.
-8. Assigned driver enters stage ETAs for the operational steps.
-9. Assigned driver updates delivery status in order: Driver Coming, Driver Arrived, Loading, On the Way, Unloading, Completed.
-10. The requester tracks each booking on **Moving Status** and can switch among multiple requests.
-11. Completion notification is sent to user.
-12. After status is **Completed**, the requester may rate the assigned driver with 1 to 5 stars on Moving Status (History is a fallback).
+7. If no driver accepts, admin assigns the request from **Jobs Assign** to a specific verified driver (search by order number or pick from the unassigned/driver-cancelled queue) and status changes to **Assigned**.
+8. If an assigned driver cancels, the job remains available for admin reassignment from Jobs Assign.
+9. Assigned driver enters stage ETAs for the operational steps.
+10. Assigned driver updates delivery status in order: Driver Coming, Driver Arrived, Loading, On the Way, Unloading, Completed.
+11. The requester tracks each booking on **Moving Status** and can switch among multiple requests.
+12. Completion notification is sent to user.
+13. After status is **Completed**, the requester may rate the assigned driver with 1 to 5 stars on Moving Status (History is a fallback).
 
 ## 10.5 Moving Request Status Definitions
 1. **Booked**
@@ -828,7 +863,7 @@ The following reference data objects are identified as likely admin-managed mast
 - On Moving Status, Accepted and Assigned share the **Driver Assigned** timeline step.
 
 3. **Assigned**
-- Set when admin manually assigns a request to a specific verified driver because no driver accepted.
+- Set when admin manually assigns a booked unassigned request, or reassigns a job cancelled by the assigned driver, to a specific verified driver.
 - On Moving Status, Assigned uses the same **Driver Assigned** timeline step as Accepted.
 
 4. **Driver Coming**
@@ -854,6 +889,7 @@ The following reference data objects are identified as likely admin-managed mast
 10. **Cancelled**
 - Set when the request is cancelled by admin, requester, or assigned driver before completion.
 - Cancelled is not a step on the eight-step progress timeline.
+- Jobs cancelled by the assigned driver remain eligible for admin reassignment from **Jobs Assign**.
 
 ---
 
@@ -864,8 +900,9 @@ Minimum reports should include:
 3. Driver verification status summary
 4. Housing listings counts by city/type/availability
 5. House booking report: list of all booking records (Pending, Confirmed, Cancelled) with filters for booking date (from/to), booking status, and optional house/agent/user criteria
-6. Moving service request and completion summary
-7. Top-performing agents/drivers by ratings
+6. Moving service request report: list of all moving requests with filters for request date (from/to) and status, plus a details view of the selected request
+7. Moving service request and completion summary
+8. Top-performing agents/drivers by ratings
 
 ---
 
@@ -924,12 +961,13 @@ The first release is accepted when:
 4. Verified agents can manage housing listings, view bookings on own houses, and cancel those bookings.
 5. Booking users and agents can cancel bookings; the system records who cancelled.
 6. Admin can open a dedicated house booking report with date and status filters.
-7. Verified drivers can process assigned moving jobs and update statuses.
-8. Roommate browse/post workflows are functional.
-9. Profile, wishlist, notifications, and histories are functional.
-10. Users can rate listing agents after a confirmed house booking and assigned drivers after a completed move, using 1 to 5 stars (not on Profile).
-11. Admin can verify users, manage roles/master data, and view reports.
-12. Required data fields and validation rules are implemented according to this specification.
+7. Admin can open a dedicated moving service request report with date and status filters and view full request details.
+8. Verified drivers can process assigned moving jobs and update statuses.
+9. Roommate browse/post workflows are functional.
+10. Profile, wishlist, notifications, and histories are functional.
+11. Users can rate listing agents after a confirmed house booking and assigned drivers after a completed move, using 1 to 5 stars (not on Profile).
+12. Admin can verify users, manage roles/master data, and view reports.
+13. Required data fields and validation rules are implemented according to this specification.
 
 ---
 
@@ -952,7 +990,7 @@ The `backend-api/` project implements the server-side scope of this specificatio
 - Public home feed: featured listings, popular houses, verified agents, partner drivers, service reviews
 - Public master-data reads for dropdown/filter values (active records only)
 - Prisma seed includes §8.3 / MD-009 amenities (`AIR CONDITIONER` … `EV CHARGER`) with General/Building/Utility categories, MD-007 floor levels (Ground Floor / `0` through 20th Floor / `20` with surchargeAmount), MD-012 moving inventory items with placeholder points, vehicle types with point ranges and PricePerKM, plus roles, status codes, Yangon locations, property types, and admin user
-- Self-service agent and driver registration via `/registrations/*` (assigns role, creates profile, sets verification to pending)
+- Self-service agent and driver registration via `/registrations/*` (assigns role, creates profile, sets that role’s verification status to pending)
 - Booking lifecycle with confirm/cancel status updates (current code still creates bookings as PENDING and uses a moving upsell dialog; SRS v1.1 house booking workflow is specified ahead of implementation)
 - Moving requests include `estimatedPrice` (customer quote) and `estimatedEarnings` (driver job visibility, FR-DRIVER-005), plus `orderNumber`. Create status is `BOOKED`. Requesters list their bookings with `GET /moving/requests` and track them on Moving Status (FR-MOVE-007).
 - Admin reports support optional `from` and `to` query parameters for period filtering
@@ -1004,15 +1042,17 @@ The `frontend-app/` project is an independent Vite + React + TypeScript applicat
 - **FR-ROOM-001..002**: `/finding-roommates` browses `GET /roommates` with gender/occupation/city/state filters. Authenticated users can post via `POST /roommates` using occupations from master data and houses from `GET /houses` as the housing select source.
 - **FR-PROFILE-001 / FR-PROFILE-004 / FR-NOTI-001 UI**: `/profile` supports `GET/PATCH /profile` and `PATCH /profile/change-password`. `/profile/wishlist` uses `GET /wishlist`. `/profile/history` uses `GET /profile/history`. Header notifications continue to mark read with `PATCH /notifications/:id/read`.
 - **FR-PROFILE-003**: Ratings use 1–5 stars on Moving Status (completed driver jobs), House details (confirmed bookings), and History. `POST /reviews` upserts by `bookingId` or `movingRequestId`. Profile no longer collects reviews.
-- **FR-DRIVER-003..006**: Driver-role users get `/driver/jobs` against `GET /driver/requests/available`, accept/reject, and job detail actions for ETA (`POST .../eta`) and status (`POST .../status` with sequential `driver_coming|driver_arrived|loading|on_the_way|unloading|completed|cancelled`). Job detail also uses `GET /moving/requests/:id` for full FR-DRIVER-005 fields.
+- **FR-DRIVER-003..006**: Driver-role users get a public sub-header **Driver Jobs** link with **Available jobs** (`GET /driver/requests/available`) and **My jobs** (`GET /driver/requests/assigned`). Available jobs support accept/reject. Assigned in-progress jobs (Accepted through Unloading, including admin assignment) stay in My jobs for ETA (`POST .../eta`) and sequential status (`POST .../status` with `driver_coming|driver_arrived|loading|on_the_way|unloading|completed|cancelled`). Completed, cancelled, and rejected jobs leave the inbox. Job detail also uses `GET /moving/requests/:id` for full FR-DRIVER-005 fields.
 
 ### Increment C implemented (admin portal)
 - **FR-ADMIN-001..002**: Separate queues at `/admin/verifications/agents` and `/admin/verifications/drivers` list pending (default) registrations (`GET /admin/agents`, `GET /admin/drivers`) with search and status filters. Detail pages review profile fields and documents (`GET /admin/agents/:userId`, `GET /admin/drivers/:userId`) then approve or reject (`PATCH .../verification` with optional `rejectionReason`). Verification status lives on `AgentProfile` / `DriverProfile`. Applicants receive an in-app notification. `/admin/verifications` redirects to the agent queue. Pending/verified/rejected counts remain on `GET /admin/reports/overview`.
 - **FR-ADMIN-003..004**: `/admin/users` supports create-user (`POST /admin/users`) and role assignment (`PATCH /admin/users/:id/roles`) for `normal|agent|driver|admin`.
-- **FR-MOVE-005 / admin assign**: `/admin/moving-assign` posts `POST /admin/moving/requests/:id/assign` with `driverUserId`.
+- **FR-MOVE-005 / admin assign**: `/admin/jobs-assign` lists booked unassigned jobs and jobs cancelled by the assigned driver (`GET /admin/moving/assignable-requests`, optional `orderNumber`). Admin chooses a verified driver (`GET /admin/moving/assignable-drivers`) then posts `POST /admin/moving/requests/:id/assign`. `/admin/moving-assign` redirects to `/admin/jobs-assign`.
 - **FR-ADMIN-005 / MD-001..012**: `/admin/master-data` indexes all entities; `/admin/master-data/:entity` provides list/create/edit and DELETE soft-deactivate against `/admin/master-data/*`.
 - **FR-ADMIN-006**: `/admin/dashboard` summary cards and `/admin/reports` period filters (`from`/`to`) consume `GET /admin/reports/overview` (registrations, verification, housing, bookings, moving, top performers).
-- Admin layout nav: Dashboard, Agent verification, Driver verification, Users, Moving Assign, Master Data, Reports. `AdminAuthGuard` continues to require `admin` role.
+- **FR-ADMIN-007**: `/admin/reports/bookings` lists house bookings with date and status filters (`GET /admin/reports/bookings`).
+- **FR-ADMIN-008**: `/admin/reports/moving` lists all moving service requests with date and status filters (`GET /admin/reports/moving`). **View details** opens `/admin/reports/moving/:id` using `GET /moving/requests/:id` (admin-allowed) for full request information.
+- Admin layout nav: Dashboard, Agent verification, Driver verification, Users, Jobs Assign, Master Data, Reports, House bookings, Moving requests. `AdminAuthGuard` continues to require `admin` role.
 
 ### Increment D implemented (agent housing CRUD + polish)
 - **FR-AGENT-002..003**: Agent-role public sub-header link **Post Housing Information** and UserMenu link to `/agent/houses`. List own houses via `GET /agent/houses`. Create/edit forms cover §8.3 fields aligned with `agentHouseCreateValidator` (`POST/PATCH /agent/houses`, `DELETE /agent/houses/:id`). Master-data dropdowns: property-types, cities, states, contract-types, floor-levels, amenities. Image fields initially used path strings (binary upload added in Increment E). Unverified agents see a clear banner; create/edit/delete stay disabled while backend enforces `AGENT_NOT_VERIFIED`.
@@ -1030,9 +1070,8 @@ The `frontend-app/` project is an independent Vite + React + TypeScript applicat
 ### Intentional choices / deferred
 - Moving create body does not send `bookingId`/`houseId` because the backend create contract does not accept them; deep-link context is UI-only.
 - Roommate housing select uses public `GET /houses` list (practical substitute until a dedicated “my houses / bookable houses” endpoint exists).
-- Driver assigned-job listing is not exposed by the backend; workspace focuses on available BOOKED requests plus detail-by-id after accept. Gap: no `GET /driver/requests/assigned` (or equivalent) for post-accept job inbox.
-- **Intentional backend limitation (Increment C):** There is no admin list/queue endpoint for pending agents, pending drivers, users, or unassigned moving requests. Admin UX uses userId/requestId entry forms and reports overview counts instead of selectable queues. A future backend increment can add list endpoints without changing the action APIs already wired.
-- **Intentional gaps retained after Increment E:** no admin selectable list queues; no report export (PDF/Excel/CSV); email/SMS notification channels remain future scope; cloud object storage remains future scope.
+- **Intentional backend limitation (Increment C):** There is no admin list/queue endpoint for users. The users screen still uses userId entry forms. Agent and driver verification queues are implemented (`GET /admin/agents`, `GET /admin/drivers` with detail and approve/reject). Moving requests can be listed from the dedicated report (`GET /admin/reports/moving`). Jobs Assign lists booked unassigned jobs and driver-cancelled jobs for fallback assignment.
+- **Intentional gaps retained after Increment E:** no admin user selectable list queue; no report export (PDF/Excel/CSV); email/SMS notification channels remain future scope; cloud object storage remains future scope.
 - **SRS v1.1 house booking workflow (specified, not yet implemented):** dedicated confirmation page; status Confirmed on submit; duplicate active-booking prevention; agent notification and booking list with booker details; user/agent cancel with cancelled-by tracking; dedicated admin house booking report (FR-ADMIN-007). Current app still uses PENDING on create and a moving upsell dialog.
 - No mock feature flags; UI adapts to real backend contracts.
 

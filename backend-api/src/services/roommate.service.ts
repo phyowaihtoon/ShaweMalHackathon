@@ -46,6 +46,7 @@ const ROOMMATE_INCLUDE = {
     select: {
       id: true,
       name: true,
+      phone: true,
       profilePicturePath: true
     }
   },

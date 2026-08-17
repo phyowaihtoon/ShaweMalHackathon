@@ -3,6 +3,7 @@ import { Router } from 'express';
 import {
   acceptDriverRequestController,
   addDriverRequestEtaController,
+  listAssignedDriverRequestsController,
   listAvailableDriverRequestsController,
   rejectDriverRequestController,
   updateDriverRequestStatusController,
@@ -24,6 +25,7 @@ const driverRouter = Router();
 driverRouter.use(requireAuth, requireRole(['driver']));
 driverRouter.post('/profile', driverProfileUpsertValidator, validateMiddleware, asyncHandler(upsertDriverProfileController));
 driverRouter.get('/requests/available', asyncHandler(listAvailableDriverRequestsController));
+driverRouter.get('/requests/assigned', asyncHandler(listAssignedDriverRequestsController));
 driverRouter.post('/requests/:id/accept', driverRequestIdValidator, validateMiddleware, asyncHandler(acceptDriverRequestController));
 driverRouter.post('/requests/:id/reject', driverRequestRejectValidator, validateMiddleware, asyncHandler(rejectDriverRequestController));
 driverRouter.post('/requests/:id/eta', driverRequestEtaValidator, validateMiddleware, asyncHandler(addDriverRequestEtaController));

@@ -300,7 +300,8 @@ const ensureRequestAssignedToDriver = async (movingRequestId: string, driverUser
     select: {
       id: true,
       status: true,
-      assignedDriverUserId: true
+      assignedDriverUserId: true,
+      moveInDate: true
     }
   });
 
@@ -735,6 +736,146 @@ export const listMyMovingRequests = async (requesterUserId: string) => {
   return requests.map((request) => normalizeMovingRequest(request, requesterUserId));
 };
 
+interface AdminMovingRequestReportOptions {
+  from?: Date;
+  to?: Date;
+  status?: MovingRequestStatus;
+}
+
+export const listAdminMovingRequests = async (options: AdminMovingRequestReportOptions = {}) => {
+  const where: {
+    createdAt?: { gte?: Date; lte?: Date };
+    status?: MovingRequestStatus;
+  } = {};
+
+  if (options.from || options.to) {
+    where.createdAt = {
+      gte: options.from,
+      lte: options.to
+    };
+  }
+
+  if (options.status) {
+    where.status = options.status;
+  }
+
+  const requests = await prisma.movingRequest.findMany({
+    where,
+    include: movingRequestArgs.include,
+    orderBy: {
+      createdAt: 'desc'
+    }
+  });
+
+  return requests.map((request) => normalizeMovingRequest(request));
+};
+
+type AdminAssignableRequestCandidate = {
+  status: MovingRequestStatus;
+  assignedDriverUserId: string | null;
+  statusEvents?: Array<{
+    status: MovingRequestStatus | null;
+    actorUserId: string | null;
+    createdAt: Date | string;
+  }>;
+};
+
+const isDriverCancelledMovingRequest = (request: AdminAssignableRequestCandidate): boolean => {
+  if (request.status !== MovingRequestStatus.CANCELLED || !request.assignedDriverUserId) {
+    return false;
+  }
+
+  const cancelEvents = [...(request.statusEvents ?? [])]
+    .filter((event) => event.status === MovingRequestStatus.CANCELLED)
+    .sort((left, right) => new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime());
+  const lastCancel = cancelEvents[cancelEvents.length - 1];
+
+  return Boolean(lastCancel?.actorUserId && lastCancel.actorUserId === request.assignedDriverUserId);
+};
+
+export const isAdminAssignableMovingRequest = (request: AdminAssignableRequestCandidate): boolean => {
+  if (request.status === MovingRequestStatus.BOOKED && request.assignedDriverUserId === null) {
+    return true;
+  }
+
+  return isDriverCancelledMovingRequest(request);
+};
+
+export const listAdminAssignableMovingRequests = async (orderNumber?: string) => {
+  const query = orderNumber?.trim();
+  const requests = await prisma.movingRequest.findMany({
+    where: {
+      status: {
+        in: [MovingRequestStatus.BOOKED, MovingRequestStatus.CANCELLED]
+      },
+      ...(query
+        ? {
+            orderNumber: {
+              contains: query
+            }
+          }
+        : {})
+    },
+    include: movingRequestArgs.include,
+    orderBy: {
+      createdAt: 'desc'
+    }
+  });
+
+  return requests.filter(isAdminAssignableMovingRequest).map((request) => normalizeMovingRequest(request));
+};
+
+export const listAdminAssignableDrivers = async () => {
+  const drivers = await prisma.user.findMany({
+    where: {
+      isActive: true,
+      userRoles: {
+        some: {
+          role: {
+            name: 'driver'
+          }
+        }
+      },
+      driverProfile: {
+        is: {
+          verificationStatus: 'VERIFIED'
+        }
+      }
+    },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      phone: true,
+      driverProfile: {
+        select: {
+          name: true,
+          phone: true,
+          vehicleLicensePlateNumber: true,
+          vehicleType: {
+            select: {
+              id: true,
+              name: true
+            }
+          }
+        }
+      }
+    },
+    orderBy: {
+      name: 'asc'
+    }
+  });
+
+  return drivers.map((driver) => ({
+    userId: driver.id,
+    name: driver.driverProfile?.name || driver.name,
+    email: driver.email,
+    phone: driver.driverProfile?.phone || driver.phone,
+    vehicleTypeName: driver.driverProfile?.vehicleType?.name ?? null,
+    vehicleLicensePlateNumber: driver.driverProfile?.vehicleLicensePlateNumber ?? null
+  }));
+};
+
 export const listAvailableMovingRequestsForDriver = async (driverUserId: string) => {
   await ensureDriverVerified(driverUserId);
 
@@ -752,6 +893,30 @@ export const listAvailableMovingRequestsForDriver = async (driverUserId: string)
     include: movingRequestArgs.include,
     orderBy: {
       createdAt: 'desc'
+    }
+  });
+
+  return requests.map((request) => normalizeMovingRequest(request, driverUserId));
+};
+
+const DRIVER_ASSIGNED_TERMINAL_STATUSES: MovingRequestStatus[] = [
+  MovingRequestStatus.COMPLETED,
+  MovingRequestStatus.CANCELLED
+];
+
+export const listAssignedMovingRequestsForDriver = async (driverUserId: string) => {
+  await ensureDriverVerified(driverUserId);
+
+  const requests = await prisma.movingRequest.findMany({
+    where: {
+      assignedDriverUserId: driverUserId,
+      status: {
+        notIn: DRIVER_ASSIGNED_TERMINAL_STATUSES
+      }
+    },
+    include: movingRequestArgs.include,
+    orderBy: {
+      updatedAt: 'desc'
     }
   });
 
@@ -860,7 +1025,15 @@ export const rejectMovingRequest = async (input: RejectMovingRequestInput) => {
 
 export const addMovingEta = async (input: AddMovingEtaInput) => {
   await ensureDriverVerified(input.driverUserId);
-  await ensureRequestAssignedToDriver(input.movingRequestId, input.driverUserId);
+  const current = await ensureRequestAssignedToDriver(input.movingRequestId, input.driverUserId);
+
+  if (input.etaAt.getTime() < current.moveInDate.getTime()) {
+    throw new ApiError(
+      400,
+      'MOVING_ETA_BEFORE_MOVE_IN',
+      'ETA time cannot be earlier than the move-in date.'
+    );
+  }
 
   const etaEntry = await prisma.$transaction(async (tx) => {
     const created = await tx.movingEtaEntry.create({
@@ -930,6 +1103,17 @@ export const updateMovingStatus = async (input: UpdateMovingStatusInput) => {
   const current = await ensureRequestAssignedToDriver(input.movingRequestId, input.driverUserId);
   assertStatusTransition(current.status, input.status);
 
+  if (input.status === MovingRequestStatus.CANCELLED) {
+    const reason = input.notes?.trim();
+    if (!reason) {
+      throw new ApiError(
+        400,
+        'MOVING_CANCEL_REASON_REQUIRED',
+        'Cancellation reason is required when cancelling a moving request.'
+      );
+    }
+  }
+
   const updated = await prisma.$transaction(async (tx) => {
     const movingRequest = await tx.movingRequest.update({
       where: {
@@ -969,38 +1153,45 @@ export const assignMovingRequestByAdmin = async (input: AssignMovingRequestInput
   await ensureDriverVerified(input.driverUserId);
 
   const movingRequest = await prisma.$transaction(async (tx) => {
-    const updateResult = await tx.movingRequest.updateMany({
+    const existing = await tx.movingRequest.findUnique({
       where: {
-        id: input.movingRequestId,
-        status: MovingRequestStatus.BOOKED,
-        assignedDriverUserId: null
+        id: input.movingRequestId
+      },
+      include: {
+        statusEvents: {
+          select: {
+            status: true,
+            actorUserId: true,
+            createdAt: true
+          },
+          orderBy: {
+            createdAt: 'asc'
+          }
+        }
+      }
+    });
+
+    if (!existing) {
+      throw new ApiError(404, 'MOVING_REQUEST_NOT_FOUND', 'Moving request not found.');
+    }
+
+    if (!isAdminAssignableMovingRequest(existing)) {
+      throw new ApiError(
+        409,
+        'MOVING_REQUEST_NOT_ASSIGNABLE',
+        'Admin assignment is allowed only for booked unassigned jobs or jobs cancelled by the assigned driver.'
+      );
+    }
+
+    await tx.movingRequest.update({
+      where: {
+        id: input.movingRequestId
       },
       data: {
         status: MovingRequestStatus.ASSIGNED,
         assignedDriverUserId: input.driverUserId
       }
     });
-
-    if (updateResult.count === 0) {
-      const existing = await tx.movingRequest.findUnique({
-        where: {
-          id: input.movingRequestId
-        },
-        select: {
-          id: true
-        }
-      });
-
-      if (!existing) {
-        throw new ApiError(404, 'MOVING_REQUEST_NOT_FOUND', 'Moving request not found.');
-      }
-
-      throw new ApiError(
-        409,
-        'MOVING_REQUEST_NOT_ASSIGNABLE',
-        'Admin assignment is allowed only when request is pending and unassigned.'
-      );
-    }
 
     await tx.movingStatusEvent.create({
       data: {

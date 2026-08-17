@@ -6,6 +6,8 @@ import {
   adminGetAgentRegistrationController,
   adminGetDriverRegistrationController,
   adminListAgentRegistrationsController,
+  adminListAssignableDriversController,
+  adminListAssignableMovingRequestsController,
   adminListDriverRegistrationsController,
   adminReportsOverviewController,
   adminUpdateAgentVerificationController,
@@ -13,13 +15,16 @@ import {
   adminUpdateUserRolesController
 } from '../../controllers/admin.controller';
 import { adminHouseBookingReportController } from '../../controllers/booking.controller';
+import { adminMovingRequestReportController } from '../../controllers/moving.controller';
 import { requireAdmin, requireAuth } from '../../middleware/auth.middleware';
 import { validateMiddleware } from '../../middleware/validate.middleware';
 import { asyncHandler } from '../../utils/async-handler';
 import {
   adminAssignMovingRequestValidator,
+  adminAssignableMovingRequestsValidator,
   adminCreateUserValidator,
   adminHouseBookingReportValidator,
+  adminMovingRequestReportValidator,
   adminRegistrationLookupValidator,
   adminUpdateRolesValidator,
   adminVerificationListValidator,
@@ -68,6 +73,13 @@ adminRouter.patch(
   validateMiddleware,
   asyncHandler(adminUpdateDriverVerificationController)
 );
+adminRouter.get(
+  '/moving/assignable-requests',
+  adminAssignableMovingRequestsValidator,
+  validateMiddleware,
+  asyncHandler(adminListAssignableMovingRequestsController)
+);
+adminRouter.get('/moving/assignable-drivers', asyncHandler(adminListAssignableDriversController));
 adminRouter.post(
   '/moving/requests/:id/assign',
   adminAssignMovingRequestValidator,
@@ -80,6 +92,12 @@ adminRouter.get(
   adminHouseBookingReportValidator,
   validateMiddleware,
   asyncHandler(adminHouseBookingReportController)
+);
+adminRouter.get(
+  '/reports/moving',
+  adminMovingRequestReportValidator,
+  validateMiddleware,
+  asyncHandler(adminMovingRequestReportController)
 );
 
 export { adminRouter };

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { masterDataApi } from '@/features/master-data/api/master-data-api'
 
 import { housesApi } from '../api/houses-api'
+import { FeatureHouses } from '../components/FeatureHouses'
 import { HouseCard } from '../components/HouseCard'
 import { HouseFilterForm, type HouseFilterValues } from '../components/HouseFilterForm'
 
@@ -76,6 +77,8 @@ export function FindingHousePage() {
         <h1 className="text-3xl font-semibold tracking-tight">{t('houses.findingTitle')}</h1>
         <p className="mt-2 text-muted-foreground">{t('houses.findingSubtitle')}</p>
       </div>
+
+      <FeatureHouses />
 
       <HouseFilterForm
         defaultValues={{

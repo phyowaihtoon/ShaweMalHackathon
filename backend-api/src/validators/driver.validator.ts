@@ -54,5 +54,19 @@ export const driverRequestStatusValidator = [
   body('status')
     .isIn([...DRIVER_STATUS_VALUES])
     .withMessage(`status must be one of: ${DRIVER_STATUS_VALUES.join(', ')}.`),
-  body('notes').optional().isString().withMessage('notes must be a string.')
+  body('notes')
+    .optional()
+    .isString()
+    .withMessage('notes must be a string.')
+    .custom((value, { req }) => {
+      if (String(req.body.status ?? '').toLowerCase() !== 'cancelled') {
+        return true;
+      }
+
+      if (typeof value !== 'string' || !value.trim()) {
+        throw new Error('notes are required when cancelling a moving request.');
+      }
+
+      return true;
+    })
 ];

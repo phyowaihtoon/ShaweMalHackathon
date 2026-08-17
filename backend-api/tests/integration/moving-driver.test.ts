@@ -256,7 +256,16 @@ jest.mock('../../src/prisma/client', () => {
         ) {
           return getUserByRole('driver')
             .filter((user) => user.verificationStatus === 'VERIFIED' && user.isActive)
-            .map((user) => ({ id: user.id }));
+            .map((user) => ({
+              ...cloneUser(user),
+              driverProfile: {
+                verificationStatus: user.verificationStatus,
+                name: user.name,
+                phone: user.phone,
+                vehicleLicensePlateNumber: 'YGN 7J-1234',
+                vehicleType: { id: 'vt-truck', name: vehicleTypes.get('vt-truck')?.name ?? '10 ft truck' }
+              }
+            }));
         }
 
         return activeUsers;
@@ -397,11 +406,45 @@ jest.mock('../../src/prisma/client', () => {
             return false;
           }
 
-          if (where?.status && item.status !== where.status) {
+          if (where?.status) {
+            if (typeof where.status === 'string') {
+              if (item.status !== where.status) {
+                return false;
+              }
+            } else if (Array.isArray(where.status.in) && !where.status.in.includes(item.status)) {
+              return false;
+            } else if (Array.isArray(where.status.notIn) && where.status.notIn.includes(item.status)) {
+              return false;
+            }
+          }
+
+          if (typeof where?.orderNumber === 'string' && item.orderNumber !== where.orderNumber) {
+            return false;
+          }
+
+          if (
+            typeof where?.orderNumber?.contains === 'string' &&
+            !item.orderNumber.toLowerCase().includes(String(where.orderNumber.contains).toLowerCase())
+          ) {
+            return false;
+          }
+
+          if (where?.createdAt?.gte && item.createdAt < where.createdAt.gte) {
+            return false;
+          }
+
+          if (where?.createdAt?.lte && item.createdAt > where.createdAt.lte) {
             return false;
           }
 
           if (where?.assignedDriverUserId === null && item.assignedDriverUserId !== null) {
+            return false;
+          }
+
+          if (
+            typeof where?.assignedDriverUserId === 'string' &&
+            item.assignedDriverUserId !== where.assignedDriverUserId
+          ) {
             return false;
           }
 
@@ -458,6 +501,9 @@ jest.mock('../../src/prisma/client', () => {
         const updated: MockMovingRequest = {
           ...found,
           status: data.status ?? found.status,
+          assignedDriverUserId:
+            data.assignedDriverUserId === undefined ? found.assignedDriverUserId : data.assignedDriverUserId,
+          acceptedAt: data.acceptedAt ?? found.acceptedAt,
           updatedAt: new Date()
         };
 
@@ -868,6 +914,194 @@ describe('Moving and driver workflow integration', () => {
     expect(outsiderView.status).toBe(403);
   });
 
+  it('lists assigned in-progress jobs and hides completed, cancelled, and rejected work', async () => {
+    const first = await request(app)
+      .post('/api/v1/moving/requests')
+      .set('Authorization', `Bearer ${requesterToken}`)
+      .send(createMovingPayload());
+    const second = await request(app)
+      .post('/api/v1/moving/requests')
+      .set('Authorization', `Bearer ${requesterToken}`)
+      .send(createMovingPayload());
+    const third = await request(app)
+      .post('/api/v1/moving/requests')
+      .set('Authorization', `Bearer ${requesterToken}`)
+      .send(createMovingPayload());
+    const fourth = await request(app)
+      .post('/api/v1/moving/requests')
+      .set('Authorization', `Bearer ${requesterToken}`)
+      .send(createMovingPayload());
+
+    const acceptedId = first.body.data.movingRequest.id as string;
+    const cancelledId = second.body.data.movingRequest.id as string;
+    const rejectedId = third.body.data.movingRequest.id as string;
+    const adminAssignedId = fourth.body.data.movingRequest.id as string;
+
+    await request(app)
+      .post(`/api/v1/driver/requests/${acceptedId}/accept`)
+      .set('Authorization', `Bearer ${driver1Token}`)
+      .send({});
+
+    const assignedAfterAccept = await request(app)
+      .get('/api/v1/driver/requests/assigned')
+      .set('Authorization', `Bearer ${driver1Token}`);
+
+    expect(assignedAfterAccept.status).toBe(200);
+    expect(assignedAfterAccept.body.data.items.map((item: { id: string }) => item.id)).toEqual([acceptedId]);
+
+    const availableAfterAccept = await request(app)
+      .get('/api/v1/driver/requests/available')
+      .set('Authorization', `Bearer ${driver1Token}`);
+
+    expect(availableAfterAccept.body.data.items.map((item: { id: string }) => item.id)).not.toContain(acceptedId);
+
+    const otherDriverAssigned = await request(app)
+      .get('/api/v1/driver/requests/assigned')
+      .set('Authorization', `Bearer ${driver2Token}`);
+
+    expect(otherDriverAssigned.body.data.items).toHaveLength(0);
+
+    await request(app)
+      .post(`/api/v1/driver/requests/${acceptedId}/status`)
+      .set('Authorization', `Bearer ${driver1Token}`)
+      .send({ status: 'driver_coming' });
+
+    const assignedInProgress = await request(app)
+      .get('/api/v1/driver/requests/assigned')
+      .set('Authorization', `Bearer ${driver1Token}`);
+
+    expect(assignedInProgress.body.data.items.map((item: { id: string }) => item.id)).toEqual([acceptedId]);
+
+    for (const status of ['driver_arrived', 'loading', 'on_the_way', 'unloading', 'completed'] as const) {
+      await request(app)
+        .post(`/api/v1/driver/requests/${acceptedId}/status`)
+        .set('Authorization', `Bearer ${driver1Token}`)
+        .send({ status });
+    }
+
+    const assignedAfterComplete = await request(app)
+      .get('/api/v1/driver/requests/assigned')
+      .set('Authorization', `Bearer ${driver1Token}`);
+
+    expect(assignedAfterComplete.body.data.items).toHaveLength(0);
+
+    await request(app)
+      .post(`/api/v1/driver/requests/${cancelledId}/accept`)
+      .set('Authorization', `Bearer ${driver1Token}`)
+      .send({});
+    await request(app)
+      .post(`/api/v1/driver/requests/${cancelledId}/status`)
+      .set('Authorization', `Bearer ${driver1Token}`)
+      .send({ status: 'cancelled', notes: 'Vehicle unavailable today' });
+
+    const assignedAfterCancel = await request(app)
+      .get('/api/v1/driver/requests/assigned')
+      .set('Authorization', `Bearer ${driver1Token}`);
+
+    expect(assignedAfterCancel.body.data.items).toHaveLength(0);
+
+    await request(app)
+      .post(`/api/v1/driver/requests/${rejectedId}/reject`)
+      .set('Authorization', `Bearer ${driver1Token}`)
+      .send({});
+
+    const availableAfterReject = await request(app)
+      .get('/api/v1/driver/requests/available')
+      .set('Authorization', `Bearer ${driver1Token}`);
+    const assignedAfterReject = await request(app)
+      .get('/api/v1/driver/requests/assigned')
+      .set('Authorization', `Bearer ${driver1Token}`);
+
+    expect(availableAfterReject.body.data.items.map((item: { id: string }) => item.id)).not.toContain(rejectedId);
+    expect(assignedAfterReject.body.data.items.map((item: { id: string }) => item.id)).not.toContain(rejectedId);
+
+    await request(app)
+      .post(`/api/v1/admin/moving/requests/${adminAssignedId}/assign`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ driverUserId: 'driver-1' });
+
+    const assignedAfterAdmin = await request(app)
+      .get('/api/v1/driver/requests/assigned')
+      .set('Authorization', `Bearer ${driver1Token}`);
+
+    expect(assignedAfterAdmin.body.data.items.map((item: { id: string }) => item.id)).toEqual([adminAssignedId]);
+
+    const unverifiedAssigned = await request(app)
+      .get('/api/v1/driver/requests/assigned')
+      .set('Authorization', `Bearer ${unverifiedDriverToken}`);
+
+    expect(unverifiedAssigned.status).toBe(403);
+  });
+
+  it('lists all moving requests for admin report with date and status filters (FR-ADMIN-008)', async () => {
+    const firstResponse = await request(app)
+      .post('/api/v1/moving/requests')
+      .set('Authorization', `Bearer ${requesterToken}`)
+      .send(createMovingPayload());
+    const firstId = firstResponse.body.data.movingRequest.id as string;
+
+    const secondResponse = await request(app)
+      .post('/api/v1/moving/requests')
+      .set('Authorization', `Bearer ${requesterToken}`)
+      .send(createMovingPayload());
+    const secondId = secondResponse.body.data.movingRequest.id as string;
+
+    await request(app)
+      .post(`/api/v1/admin/moving/requests/${secondId}/assign`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ driverUserId: 'driver-1' });
+
+    const denied = await request(app)
+      .get('/api/v1/admin/reports/moving')
+      .set('Authorization', `Bearer ${requesterToken}`);
+
+    expect(denied.status).toBe(403);
+
+    const allResponse = await request(app)
+      .get('/api/v1/admin/reports/moving')
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    expect(allResponse.status).toBe(200);
+    expect(allResponse.body.data.items).toHaveLength(2);
+    expect(allResponse.body.data.items.map((item: { id: string }) => item.id)).toEqual(
+      expect.arrayContaining([firstId, secondId])
+    );
+
+    const bookedResponse = await request(app)
+      .get('/api/v1/admin/reports/moving')
+      .query({ status: 'BOOKED' })
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    expect(bookedResponse.status).toBe(200);
+    expect(bookedResponse.body.data.items).toHaveLength(1);
+    expect(bookedResponse.body.data.items[0].id).toBe(firstId);
+    expect(bookedResponse.body.data.items[0].status).toBe('BOOKED');
+    expect(bookedResponse.body.data.items[0].requester.name).toBe('Requester User');
+
+    const assignedResponse = await request(app)
+      .get('/api/v1/admin/reports/moving')
+      .query({ status: 'ASSIGNED' })
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    expect(assignedResponse.body.data.items).toHaveLength(1);
+    expect(assignedResponse.body.data.items[0].id).toBe(secondId);
+
+    const futureFrom = await request(app)
+      .get('/api/v1/admin/reports/moving')
+      .query({ from: '2099-01-01' })
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    expect(futureFrom.status).toBe(200);
+    expect(futureFrom.body.data.items).toHaveLength(0);
+
+    const invalidStatus = await request(app)
+      .get('/api/v1/admin/reports/moving')
+      .query({ status: 'PENDING' })
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    expect(invalidStatus.status).toBe(400);
+  });
+
   it('supports admin fallback assignment only when pending and unassigned', async () => {
     const createResponse = await request(app)
       .post('/api/v1/moving/requests')
@@ -894,6 +1128,85 @@ describe('Moving and driver workflow integration', () => {
     expect(secondAssign.body.errors.code).toBe('MOVING_REQUEST_NOT_ASSIGNABLE');
   });
 
+  it('lists assignable jobs and verified drivers for admin jobs assign (FR-MOVE-005)', async () => {
+    const bookedResponse = await request(app)
+      .post('/api/v1/moving/requests')
+      .set('Authorization', `Bearer ${requesterToken}`)
+      .send(createMovingPayload());
+    const bookedId = bookedResponse.body.data.movingRequest.id as string;
+    const bookedOrder = bookedResponse.body.data.movingRequest.orderNumber as string;
+
+    const acceptedResponse = await request(app)
+      .post('/api/v1/moving/requests')
+      .set('Authorization', `Bearer ${requesterToken}`)
+      .send(createMovingPayload());
+    const acceptedId = acceptedResponse.body.data.movingRequest.id as string;
+    await request(app)
+      .post(`/api/v1/driver/requests/${acceptedId}/accept`)
+      .set('Authorization', `Bearer ${driver1Token}`)
+      .send({});
+
+    const cancelledResponse = await request(app)
+      .post('/api/v1/moving/requests')
+      .set('Authorization', `Bearer ${requesterToken}`)
+      .send(createMovingPayload());
+    const cancelledId = cancelledResponse.body.data.movingRequest.id as string;
+    await request(app)
+      .post(`/api/v1/driver/requests/${cancelledId}/accept`)
+      .set('Authorization', `Bearer ${driver2Token}`)
+      .send({});
+    await request(app)
+      .post(`/api/v1/driver/requests/${cancelledId}/status`)
+      .set('Authorization', `Bearer ${driver2Token}`)
+      .send({ status: 'cancelled', notes: 'Vehicle breakdown' });
+
+    const denied = await request(app)
+      .get('/api/v1/admin/moving/assignable-requests')
+      .set('Authorization', `Bearer ${requesterToken}`);
+    expect(denied.status).toBe(403);
+
+    const jobsResponse = await request(app)
+      .get('/api/v1/admin/moving/assignable-requests')
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    expect(jobsResponse.status).toBe(200);
+    const jobIds = jobsResponse.body.data.items.map((item: { id: string }) => item.id);
+    expect(jobIds).toEqual(expect.arrayContaining([bookedId, cancelledId]));
+    expect(jobIds).not.toContain(acceptedId);
+
+    const searchResponse = await request(app)
+      .get('/api/v1/admin/moving/assignable-requests')
+      .query({ orderNumber: bookedOrder })
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    expect(searchResponse.body.data.items).toHaveLength(1);
+    expect(searchResponse.body.data.items[0].id).toBe(bookedId);
+
+    const driversResponse = await request(app)
+      .get('/api/v1/admin/moving/assignable-drivers')
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    expect(driversResponse.status).toBe(200);
+    const driverIds = driversResponse.body.data.items.map((item: { userId: string }) => item.userId);
+    expect(driverIds).toEqual(expect.arrayContaining(['driver-1', 'driver-2']));
+    expect(driverIds).not.toContain('driver-pending');
+    expect(driversResponse.body.data.items[0]).toEqual(
+      expect.objectContaining({
+        name: expect.any(String),
+        phone: expect.any(String)
+      })
+    );
+
+    const reassignResponse = await request(app)
+      .post(`/api/v1/admin/moving/requests/${cancelledId}/assign`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ driverUserId: 'driver-1' });
+
+    expect(reassignResponse.status).toBe(200);
+    expect(reassignResponse.body.data.movingRequest.status).toBe('ASSIGNED');
+    expect(reassignResponse.body.data.movingRequest.assignedDriver.id).toBe('driver-1');
+  });
+
   it('enforces ETA/status authorization and allows assigned driver lifecycle updates', async () => {
     const createResponse = await request(app)
       .post('/api/v1/moving/requests')
@@ -917,10 +1230,18 @@ describe('Moving and driver workflow integration', () => {
     const etaResponse = await request(app)
       .post(`/api/v1/driver/requests/${movingRequestId}/eta`)
       .set('Authorization', `Bearer ${driver1Token}`)
-      .send({ stage: 'loading', etaAt: '2026-09-01T08:30:00.000Z' });
+      .send({ stage: 'loading', etaAt: '2026-09-01T10:00:00.000Z' });
 
     expect(etaResponse.status).toBe(200);
     expect(etaResponse.body.data.etaEntry.stage).toBe('loading');
+
+    const etaBeforeMoveIn = await request(app)
+      .post(`/api/v1/driver/requests/${movingRequestId}/eta`)
+      .set('Authorization', `Bearer ${driver1Token}`)
+      .send({ stage: 'driver_coming', etaAt: '2026-08-31T10:00:00.000Z' });
+
+    expect(etaBeforeMoveIn.status).toBe(400);
+    expect(etaBeforeMoveIn.body.errors.code).toBe('MOVING_ETA_BEFORE_MOVE_IN');
 
     const forbiddenStatus = await request(app)
       .post(`/api/v1/driver/requests/${movingRequestId}/status`)
@@ -957,6 +1278,35 @@ describe('Moving and driver workflow integration', () => {
 
     const completionNotification = notifications.find((item) => item.title === 'Moving Request Completed');
     expect(completionNotification).toBeDefined();
+  });
+
+  it('requires cancellation reason and rejects ETA before move-in date', async () => {
+    const createResponse = await request(app)
+      .post('/api/v1/moving/requests')
+      .set('Authorization', `Bearer ${requesterToken}`)
+      .send(createMovingPayload());
+
+    const movingRequestId = createResponse.body.data.movingRequest.id as string;
+
+    await request(app)
+      .post(`/api/v1/driver/requests/${movingRequestId}/accept`)
+      .set('Authorization', `Bearer ${driver1Token}`)
+      .send({});
+
+    const cancelWithoutReason = await request(app)
+      .post(`/api/v1/driver/requests/${movingRequestId}/status`)
+      .set('Authorization', `Bearer ${driver1Token}`)
+      .send({ status: 'cancelled' });
+
+    expect(cancelWithoutReason.status).toBe(400);
+
+    const cancelWithReason = await request(app)
+      .post(`/api/v1/driver/requests/${movingRequestId}/status`)
+      .set('Authorization', `Bearer ${driver1Token}`)
+      .send({ status: 'cancelled', notes: 'Customer rescheduled' });
+
+    expect(cancelWithReason.status).toBe(200);
+    expect(cancelWithReason.body.data.movingRequest.status).toBe('CANCELLED');
   });
 
   it('validates moving request payload with non-negative inventory counts and required fields', async () => {

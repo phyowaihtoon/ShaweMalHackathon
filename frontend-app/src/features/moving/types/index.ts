@@ -74,6 +74,10 @@ export type MovingRequest = {
   status: string
   pickupAddress: string
   dropoffAddress: string
+  pickupLatitude?: number | null
+  pickupLongitude?: number | null
+  dropoffLatitude?: number | null
+  dropoffLongitude?: number | null
   distanceKm?: number | null
   moveInDate: string
   remarks?: string | null

@@ -5,6 +5,7 @@ import { upsertDriverProfile } from '../services/driver.service';
 import {
   acceptMovingRequest,
   addMovingEta,
+  listAssignedMovingRequestsForDriver,
   listAvailableMovingRequestsForDriver,
   rejectMovingRequest,
   updateMovingStatus
@@ -86,6 +87,13 @@ export const listAvailableDriverRequestsController = async (req: Request, res: R
   const items = await listAvailableMovingRequestsForDriver(driverUserId);
 
   sendSuccess(res, 200, 'Available moving requests fetched successfully', { items });
+};
+
+export const listAssignedDriverRequestsController = async (req: Request, res: Response): Promise<void> => {
+  const driverUserId = requireDriverId(req);
+  const items = await listAssignedMovingRequestsForDriver(driverUserId);
+
+  sendSuccess(res, 200, 'Assigned moving requests fetched successfully', { items });
 };
 
 export const acceptDriverRequestController = async (req: Request, res: Response): Promise<void> => {

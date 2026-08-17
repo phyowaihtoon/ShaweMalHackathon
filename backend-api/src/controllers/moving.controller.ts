@@ -1,6 +1,14 @@
 import { Request, Response } from 'express';
 
-import { createMovingRequest, getMovingRequestById, listMyMovingRequests, quoteMovingRequest } from '../services/moving.service';
+import { MovingRequestStatus } from '@prisma/client';
+
+import {
+  createMovingRequest,
+  getMovingRequestById,
+  listAdminMovingRequests,
+  listMyMovingRequests,
+  quoteMovingRequest
+} from '../services/moving.service';
 import { ApiError } from '../utils/api-error';
 import { sendSuccess } from '../utils/api-response';
 
@@ -93,4 +101,21 @@ export const getMovingRequestController = async (req: Request, res: Response): P
 
   const movingRequest = await getMovingRequestById(requestId, actor);
   sendSuccess(res, 200, 'Moving request fetched successfully', { movingRequest });
+};
+
+const MOVING_REQUEST_STATUSES = new Set<string>(Object.values(MovingRequestStatus));
+
+export const adminMovingRequestReportController = async (req: Request, res: Response): Promise<void> => {
+  const from = typeof req.query.from === 'string' ? new Date(req.query.from) : undefined;
+  const to = typeof req.query.to === 'string' ? new Date(req.query.to) : undefined;
+  const statusValue = typeof req.query.status === 'string' ? req.query.status.toUpperCase() : undefined;
+  const status = statusValue && MOVING_REQUEST_STATUSES.has(statusValue) ? (statusValue as MovingRequestStatus) : undefined;
+
+  const items = await listAdminMovingRequests({
+    from: from && !Number.isNaN(from.getTime()) ? from : undefined,
+    to: to && !Number.isNaN(to.getTime()) ? to : undefined,
+    status
+  });
+
+  sendSuccess(res, 200, 'Moving request report fetched successfully', { items });
 };

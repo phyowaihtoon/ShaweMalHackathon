@@ -64,11 +64,6 @@ export function UserMenu() {
         <DropdownMenuItem asChild>
           <Link to="/driver-register">{t('nav.driverRegister')}</Link>
         </DropdownMenuItem>
-        {user?.roles?.includes('driver') ? (
-          <DropdownMenuItem asChild>
-            <Link to="/driver/jobs">{t('nav.driverJobs')}</Link>
-          </DropdownMenuItem>
-        ) : null}
         {user?.roles?.includes('admin') ? (
           <DropdownMenuItem asChild>
             <Link to="/admin/dashboard">{t('nav.admin')}</Link>

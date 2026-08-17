@@ -56,8 +56,9 @@ describe('home page', () => {
         'From personalized home searching to trusted moving services — everything you need, all in one place',
       ),
     ).toBeInTheDocument()
-    expect(await screen.findByText('Golden Condo')).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: /your new place\. your new chapter\./i })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: /your new place\. your new chapter\./i })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: /featured houses/i })).not.toBeInTheDocument()
+    expect(screen.queryByText('Golden Condo')).not.toBeInTheDocument()
     expect(screen.getByText('Simple & Convenient')).toBeInTheDocument()
     expect(screen.getByText('Support Throughout Your Move')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /how shawe mal works\?/i })).toBeInTheDocument()

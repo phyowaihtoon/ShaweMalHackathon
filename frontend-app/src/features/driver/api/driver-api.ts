@@ -48,6 +48,9 @@ export const driverJobsApi = {
   listAvailable() {
     return apiRequest<{ items: MovingRequest[] }>('/driver/requests/available')
   },
+  listAssigned() {
+    return apiRequest<{ items: MovingRequest[] }>('/driver/requests/assigned')
+  },
   accept(id: string) {
     return apiRequest<{ movingRequest: MovingRequest }>(`/driver/requests/${id}/accept`, {
       method: 'POST',

@@ -151,6 +151,7 @@ const hydrateRoommatePost = (item: MockRoommatePost) => {
     user: {
       id: user?.id ?? 'unknown-user',
       name: user?.name ?? 'Unknown',
+      phone: user?.phone ?? null,
       profilePicturePath: user?.profilePicturePath ?? null
     },
     occupation: occupations.get(item.occupationId)
@@ -845,6 +846,7 @@ describe('Core increment modules', () => {
     const listResponse = await request(app).get('/api/v1/roommates').query({ city: 'Yangon' });
     expect(listResponse.status).toBe(200);
     expect(listResponse.body.data.items).toHaveLength(1);
+    expect(listResponse.body.data.items[0].user.phone).toBe('091111111');
 
     const invalidResponse = await request(app).get('/api/v1/roommates').query({ gender: 'INVALID' });
     expect(invalidResponse.status).toBe(400);

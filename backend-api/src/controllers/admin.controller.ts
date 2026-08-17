@@ -11,7 +11,7 @@ import {
   listAdminAgentRegistrations,
   listAdminDriverRegistrations
 } from '../services/admin.service';
-import { assignMovingRequestByAdmin } from '../services/moving.service';
+import { assignMovingRequestByAdmin, listAdminAssignableDrivers, listAdminAssignableMovingRequests } from '../services/moving.service';
 import { toSafeUser } from '../services/user.service';
 import { ApiError } from '../utils/api-error';
 import { sendSuccess } from '../utils/api-response';
@@ -147,6 +147,17 @@ export const adminGetDriverRegistrationController = async (req: Request, res: Re
   const userId = String(req.params.userId ?? '');
   const result = await getAdminDriverRegistration(userId);
   sendSuccess(res, 200, 'Driver registration fetched successfully', result);
+};
+
+export const adminListAssignableMovingRequestsController = async (req: Request, res: Response): Promise<void> => {
+  const orderNumber = typeof req.query.orderNumber === 'string' ? req.query.orderNumber : undefined;
+  const items = await listAdminAssignableMovingRequests(orderNumber);
+  sendSuccess(res, 200, 'Assignable moving requests fetched successfully', { items });
+};
+
+export const adminListAssignableDriversController = async (_req: Request, res: Response): Promise<void> => {
+  const items = await listAdminAssignableDrivers();
+  sendSuccess(res, 200, 'Assignable drivers fetched successfully', { items });
 };
 
 export const adminAssignMovingRequestController = async (req: Request, res: Response): Promise<void> => {

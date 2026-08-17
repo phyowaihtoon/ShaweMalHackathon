@@ -127,11 +127,6 @@ export function ProfilePage() {
           <Button asChild size="sm" variant="outline">
             <Link to="/driver-register">{t('nav.driverRegister')}</Link>
           </Button>
-          {profile.roles.includes('driver') ? (
-            <Button asChild size="sm" variant="outline">
-              <Link to="/driver/jobs">{t('nav.driverJobs')}</Link>
-            </Button>
-          ) : null}
         </div>
       </div>
 

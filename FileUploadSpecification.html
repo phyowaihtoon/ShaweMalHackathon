@@ -552,7 +552,23 @@ This file-upload increment is accepted when:
 | Version | Date | Summary |
 |---------|------|---------|
 | 1.0 | 2026-08-12 | Initial local-disk upload specification (no cloud); upload-first shared API; phased implementation plan |
-  </script>
+| 1.1 | 2026-08-13 | Implementation status: Phases 1–5 complete for wired screens; admin protected-doc preview; profile/roommate avatars |
+
+---
+
+## 17. Implementation Status (as of 2026-08-13)
+
+| Area | Status |
+|------|--------|
+| Backend `POST /uploads` + static + protected docs | Done |
+| Path regex on domain validators | Done |
+| Agent house upload + house display | Done |
+| Moving cargo upload + detail/driver display | Done |
+| Profile picture upload + avatar display | Done |
+| Agent/driver registration file pickers | Done |
+| Admin verification queues + `GET /admin/agents|drivers/:userId` doc preview | Done |
+| Cloud storage | Deferred |
+</script>
 
   <script>
     (function () {

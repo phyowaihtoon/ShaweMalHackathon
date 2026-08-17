@@ -1,4 +1,10 @@
+import { MovingRequestStatus } from '@prisma/client';
 import { body, param, query } from 'express-validator';
+
+const movingRequestStatusQueryValues = [
+  ...Object.values(MovingRequestStatus),
+  ...Object.values(MovingRequestStatus).map((status) => status.toLowerCase())
+];
 
 const allowedRoles = ['normal', 'agent', 'driver', 'admin'];
 const verificationActions = ['pending', 'approve', 'reject'];
@@ -52,6 +58,10 @@ export const adminAssignMovingRequestValidator = [
   body('driverUserId').trim().notEmpty().withMessage('driverUserId is required.')
 ];
 
+export const adminAssignableMovingRequestsValidator = [
+  query('orderNumber').optional().trim().isLength({ max: 40 }).withMessage('orderNumber must be at most 40 characters.')
+];
+
 export const adminHouseBookingReportValidator = [
   query('from').optional().isISO8601().withMessage('from must be a valid date.'),
   query('to').optional().isISO8601().withMessage('to must be a valid date.'),
@@ -59,4 +69,10 @@ export const adminHouseBookingReportValidator = [
   query('houseId').optional().trim(),
   query('agentId').optional().trim(),
   query('userId').optional().trim()
+];
+
+export const adminMovingRequestReportValidator = [
+  query('from').optional().isISO8601().withMessage('from must be a valid date.'),
+  query('to').optional().isISO8601().withMessage('to must be a valid date.'),
+  query('status').optional().isIn(movingRequestStatusQueryValues).withMessage('status is invalid.')
 ];

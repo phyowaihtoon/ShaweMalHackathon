@@ -71,7 +71,7 @@ Ensure `uploads/{houses,moving,docs,profile}` exist (created on boot). Binaries 
 | Bookings | `GET /bookings`, `GET /bookings/:id`, `PATCH /bookings/:id/status` |
 | Registrations | `POST /registrations/agent`, `POST /registrations/driver` |
 | Agent | `POST /agent/profile`, CRUD `/agent/houses`, `GET /agent/bookings` |
-| Driver | profile + moving request accept/reject/eta/status |
+| Driver | profile + available/assigned moving requests + accept/reject/eta/status |
 | Moving | `POST /moving/quote`, `POST /moving/requests`, `GET /moving/requests`, `GET /moving/requests/:id` |
 | Uploads | `POST /uploads?category=...` |
 | Files | `GET /files/docs/:filename` (protected) |
@@ -80,7 +80,7 @@ Ensure `uploads/{houses,moving,docs,profile}` exist (created on boot). Binaries 
 | Reviews | `GET/POST /reviews` (POST upserts by `bookingId` or `movingRequestId`) |
 | Notifications | `GET /notifications`, `PATCH /notifications/:id/read` |
 | Public master data | `GET /master-data/:entity` |
-| Admin | users, agent/driver verification queues (`GET /admin/agents`, `GET /admin/drivers`), moving assignment, overview reports, `GET /admin/reports/bookings` |
+| Admin | users, agent/driver verification queues (`GET /admin/agents`, `GET /admin/drivers`), jobs assign (`GET /admin/moving/assignable-requests`, `GET /admin/moving/assignable-drivers`, `POST /admin/moving/requests/:id/assign`), overview reports, `GET /admin/reports/bookings`, `GET /admin/reports/moving` |
 | Admin master data | CRUD `/admin/master-data/:entity` including `roles` |
 
 ## Requirement mapping (backend)
@@ -96,7 +96,7 @@ Implemented requirement groups:
 - FR-ROOM-001..002 — roommate browse/post
 - FR-PROFILE-001..004 — profile, history, reviews, logout via refresh revoke
 - FR-NOTI-001 — in-app notifications for core events
-- FR-ADMIN-001..007 — verification, users, roles, master data, overview reports, house booking report
+- FR-ADMIN-001..008 — verification, users, roles, master data, overview reports, house booking report, moving request report
 - MD-001..012 — master data CRUD including roles and moving inventory items
 
 ## Notes

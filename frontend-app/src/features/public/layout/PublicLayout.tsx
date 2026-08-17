@@ -26,20 +26,16 @@ const authTopLinks = [
   { to: '/driver-register', labelKey: 'nav.driverRegister' },
 ] as const
 
-const publicSubLinks = [
-  { to: '/finding-house', labelKey: 'nav.findingHouse' },
-  { to: '/hire-moving', labelKey: 'nav.hireMoving' },
-  { to: '/moving-status', labelKey: 'nav.movingStatus' },
-  { to: '/finding-roommates', labelKey: 'nav.findingRoommates' },
-] as const
-
-const agentSubLinks = [
-  { to: '/finding-house', labelKey: 'nav.findingHouse' },
-  { to: '/agent/houses', labelKey: 'nav.postHousingInformation' },
-  { to: '/hire-moving', labelKey: 'nav.hireMoving' },
-  { to: '/moving-status', labelKey: 'nav.movingStatus' },
-  { to: '/finding-roommates', labelKey: 'nav.findingRoommates' },
-] as const
+function buildPublicSubLinks(options: { isAgent: boolean; isDriver: boolean }) {
+  return [
+    { to: '/finding-house', labelKey: 'nav.findingHouse' },
+    ...(options.isAgent ? [{ to: '/agent/houses', labelKey: 'nav.postHousingInformation' }] : []),
+    { to: '/hire-moving', labelKey: 'nav.hireMoving' },
+    { to: '/moving-status', labelKey: 'nav.movingStatus' },
+    ...(options.isDriver ? [{ to: '/driver/jobs', labelKey: 'nav.driverJobs' }] : []),
+    { to: '/finding-roommates', labelKey: 'nav.findingRoommates' },
+  ]
+}
 
 function NavItem({ to, label, end }: { to: string; label: string; end?: boolean }) {
   return (
@@ -63,7 +59,8 @@ export function PublicLayout() {
   const { isAuthenticated, isBootstrapping, user } = useAuth()
   const topLinks = isAuthenticated ? authTopLinks : guestTopLinks
   const isAgent = Boolean(user?.roles?.includes('agent'))
-  const subLinks = isAgent ? [...agentSubLinks] : [...publicSubLinks]
+  const isDriver = Boolean(user?.roles?.includes('driver'))
+  const subLinks = buildPublicSubLinks({ isAgent, isDriver })
 
   return (
     <div className="min-h-screen bg-background">

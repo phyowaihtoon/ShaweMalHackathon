@@ -5,6 +5,8 @@ export type RoommateListFilters = {
   occupationId?: string
   city?: string
   state?: string
+  cityId?: string
+  stateId?: string
 }
 
 export type RoommatePost = {
@@ -15,7 +17,7 @@ export type RoommatePost = {
   occupation?: { id: string; name: string } | null
   preferences?: Record<string, boolean>
   hobbies?: Record<string, boolean>
-  user?: { id: string; name: string; profilePicturePath?: string | null } | null
+  user?: { id: string; name: string; phone?: string | null; profilePicturePath?: string | null } | null
   house?: {
     id: string
     title: string

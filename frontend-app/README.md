@@ -84,20 +84,21 @@ Provider order: Theme → I18n → Query → Auth → Router.
 | Roommates | FR-ROOM-001..002 | Browse `GET /roommates` with filters; auth post `POST /roommates` |
 | Profile module | FR-PROFILE-001, FR-PROFILE-004, FR-NOTI-001 UI | `/profile`, wishlist, history; `GET/PATCH /profile`, change-password; notifications mark-read kept |
 | Ratings | FR-PROFILE-003 | 1–5 stars on Moving Status (completed), House details (confirmed booking), and History; `POST /reviews` with `bookingId` or `movingRequestId` |
-| Driver jobs | FR-DRIVER-003..006 | `/driver/jobs` for `driver` role: available list, accept/reject, ETA, sequential status (`driver_coming` … `completed`) |
+| Driver jobs | FR-DRIVER-003..006 | Public sub-header **Driver Jobs** for `driver` role; Available (`GET /driver/requests/available`) plus My jobs (`GET /driver/requests/assigned`); accept/reject, ETA, sequential status (`driver_coming` … `completed`); completed/cancelled/rejected leave My jobs |
 
 ### Increment C
 
 | Area | Requirement IDs | Notes |
 | --- | --- | --- |
-| Admin shell nav | FR-ADMIN portal | Dashboard, Agent verification, Driver verification, Users, Moving Assign, Master Data, Reports |
+| Admin shell nav | FR-ADMIN portal | Dashboard, Agent verification, Driver verification, Users, Jobs Assign, Master Data, Reports, House bookings, Moving requests |
 | Dashboard | FR-ADMIN-006 (summary) | Cards from `GET /admin/reports/overview` + quick links |
 | Verifications | FR-ADMIN-001..002 | Agent/driver queues (`GET /admin/agents`, `GET /admin/drivers`) plus detail review and approve/reject (`PATCH .../verification`) |
 | Users & roles | FR-ADMIN-003..004 | Create user `POST /admin/users`; assign roles `PATCH /admin/users/:id/roles` by user id |
-| Moving assign | FR-MOVE-005 | `POST /admin/moving/requests/:id/assign` with requestId + driverUserId |
+| Jobs assign | FR-MOVE-005 | `/admin/jobs-assign` lists booked unassigned and driver-cancelled jobs; search by order number; choose a verified driver; `POST /admin/moving/requests/:id/assign` |
 | Master data CRUD | FR-ADMIN-005, MD-001..012 | Reusable entity pages for all `/admin/master-data/:entity` entities; DELETE soft-deactivates |
 | Reports | FR-ADMIN-006 | From/to filters + overview sections (housing, bookings, moving, top performers) |
 | House booking report | FR-ADMIN-007 | `/admin/reports/bookings` lists all booking records with date and status filters |
+| Moving request report | FR-ADMIN-008 | `/admin/reports/moving` lists all moving requests with date and status filters; **View details** opens `/admin/reports/moving/:id` |
 
 ### Increment D
 
@@ -141,11 +142,14 @@ See repo root `FileUploadSpecification.md`.
 - `/admin/verifications/drivers` Driver verification queue
 - `/admin/verifications/drivers/:userId` Driver registration review
 - `/admin/users` Create user + assign roles
-- `/admin/moving-assign` Fallback moving assignment
+- `/admin/jobs-assign` Jobs Assign (booked / driver-cancelled queue + driver picker)
+- `/admin/moving-assign` Redirects to Jobs Assign
 - `/admin/master-data` Master-data entity index
 - `/admin/master-data/:entity` Master-data CRUD workspace
 - `/admin/reports` Period-filtered reports overview
 - `/admin/reports/bookings` House booking report
+- `/admin/reports/moving` Moving service request report
+- `/admin/reports/moving/:id` Moving service request details
 
 ## Environment
 

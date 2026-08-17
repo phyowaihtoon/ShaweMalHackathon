@@ -8,6 +8,8 @@ function toQuery(filters: RoommateListFilters): string {
   if (filters.occupationId?.trim()) search.set('occupationId', filters.occupationId.trim())
   if (filters.city?.trim()) search.set('city', filters.city.trim())
   if (filters.state?.trim()) search.set('state', filters.state.trim())
+  if (filters.cityId?.trim()) search.set('cityId', filters.cityId.trim())
+  if (filters.stateId?.trim()) search.set('stateId', filters.stateId.trim())
   const query = search.toString()
   return query ? `?${query}` : ''
 }

@@ -34,8 +34,8 @@ export function FindingRoommatesPage() {
   const [filters, setFilters] = useState<RoommateListFilters>({
     gender: '',
     occupationId: '',
-    city: '',
-    state: '',
+    cityId: '',
+    stateId: '',
   })
   const [appliedFilters, setAppliedFilters] = useState<RoommateListFilters>({})
   const [showPostForm, setShowPostForm] = useState(false)
@@ -45,6 +45,16 @@ export function FindingRoommatesPage() {
   const occupationsQuery = useQuery({
     queryKey: ['master-data', 'occupations'],
     queryFn: () => masterDataApi.list('occupations'),
+  })
+
+  const citiesQuery = useQuery({
+    queryKey: ['master-data', 'cities'],
+    queryFn: () => masterDataApi.list('cities'),
+  })
+
+  const statesQuery = useQuery({
+    queryKey: ['master-data', 'states'],
+    queryFn: () => masterDataApi.list('states'),
   })
 
   const roommatesQuery = useQuery({
@@ -85,6 +95,15 @@ export function FindingRoommatesPage() {
   const occupationNameById = useMemo(() => {
     return new Map((occupationsQuery.data?.items ?? []).map((item) => [item.id, item.name]))
   }, [occupationsQuery.data?.items])
+
+  const filteredCities = useMemo(() => {
+    const items = citiesQuery.data?.items ?? []
+    if (!filters.stateId) return items
+    return items.filter((city) => !city.stateId || city.stateId === filters.stateId)
+  }, [citiesQuery.data?.items, filters.stateId])
+
+  const isLoadingFilterOptions =
+    occupationsQuery.isLoading || citiesQuery.isLoading || statesQuery.isLoading
 
   const onPost = handleSubmit(async (values) => {
     const validationErrors = validateRoommatePostForm(values, t)
@@ -147,23 +166,20 @@ export function FindingRoommatesPage() {
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">{t('roommates.filtersTitle')}</CardTitle>
-        </CardHeader>
         <CardContent>
           <form
-            className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
+            className="flex flex-col gap-3 lg:flex-row lg:items-end"
             onSubmit={(event) => {
               event.preventDefault()
               setAppliedFilters({
                 gender: (filters.gender || undefined) as RoommateGender | undefined,
                 occupationId: filters.occupationId || undefined,
-                city: filters.city || undefined,
-                state: filters.state || undefined,
+                cityId: filters.cityId || undefined,
+                stateId: filters.stateId || undefined,
               })
             }}
           >
-            <Field label={t('roommates.gender')} htmlFor="roommate-filter-gender">
+            <Field label={t('roommates.gender')} htmlFor="roommate-filter-gender" className="min-w-0 lg:flex-1">
               <select
                 id="roommate-filter-gender"
                 className={selectClassName}
@@ -176,10 +192,12 @@ export function FindingRoommatesPage() {
                 <option value="ANY">{t('roommates.genderAny')}</option>
               </select>
             </Field>
-            <Field label={t('roommates.occupation')}>
+            <Field label={t('roommates.occupation')} htmlFor="roommate-filter-occupation" className="min-w-0 lg:flex-1">
               <select
+                id="roommate-filter-occupation"
                 className={selectClassName}
                 value={filters.occupationId ?? ''}
+                disabled={isLoadingFilterOptions}
                 onChange={(e) => setFilters((prev) => ({ ...prev, occupationId: e.target.value }))}
               >
                 <option value="">{t('houses.filters.any')}</option>
@@ -190,20 +208,61 @@ export function FindingRoommatesPage() {
                 ))}
               </select>
             </Field>
-            <Field label={t('houses.filters.city')}>
-              <Input
-                value={filters.city ?? ''}
-                onChange={(e) => setFilters((prev) => ({ ...prev, city: e.target.value }))}
-              />
+            <Field label={t('agent.state')} htmlFor="roommate-filter-state" className="min-w-0 lg:flex-1">
+              <select
+                id="roommate-filter-state"
+                className={selectClassName}
+                value={filters.stateId ?? ''}
+                disabled={isLoadingFilterOptions}
+                onChange={(e) =>
+                  setFilters((prev) => ({
+                    ...prev,
+                    stateId: e.target.value,
+                    cityId: '',
+                  }))
+                }
+              >
+                <option value="">{t('houses.filters.any')}</option>
+                {(statesQuery.data?.items ?? []).map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}
+                  </option>
+                ))}
+              </select>
             </Field>
-            <Field label={t('agent.state')}>
-              <Input
-                value={filters.state ?? ''}
-                onChange={(e) => setFilters((prev) => ({ ...prev, state: e.target.value }))}
-              />
+            <Field label={t('houses.filters.city')} htmlFor="roommate-filter-city" className="min-w-0 lg:flex-1">
+              <select
+                id="roommate-filter-city"
+                className={selectClassName}
+                value={filters.cityId ?? ''}
+                disabled={isLoadingFilterOptions}
+                onChange={(e) => setFilters((prev) => ({ ...prev, cityId: e.target.value }))}
+              >
+                <option value="">{t('houses.filters.any')}</option>
+                {filteredCities.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}
+                  </option>
+                ))}
+              </select>
             </Field>
-            <div className="sm:col-span-2 lg:col-span-4">
+            <div className="flex shrink-0 gap-2">
               <Button type="submit">{t('houses.filters.apply')}</Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setFilters({
+                    gender: '',
+                    occupationId: '',
+                    cityId: '',
+                    stateId: '',
+                  })
+                  setAppliedFilters({})
+                }}
+              >
+                {t('common.clear')}
+              </Button>
             </div>
           </form>
         </CardContent>
@@ -330,6 +389,14 @@ export function FindingRoommatesPage() {
                     <p className="text-sm text-muted-foreground">
                       {item.user?.name ?? t('home.anonymousReviewer')} · {item.gender}
                     </p>
+                    {item.user?.phone ? (
+                      <p className="text-sm">
+                        <span className="font-medium">{t('roommates.contactPhone')}: </span>
+                        <a href={`tel:${item.user.phone.replace(/\s+/g, '')}`} className="hover:underline">
+                          {item.user.phone}
+                        </a>
+                      </p>
+                    ) : null}
                   </div>
                 </div>
               </CardHeader>

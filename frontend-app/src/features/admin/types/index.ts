@@ -160,6 +160,21 @@ export type HouseBookingReportFilters = {
   userId?: string
 }
 
+export type MovingRequestReportFilters = {
+  from?: string
+  to?: string
+  status?: string
+}
+
+export type AssignableDriver = {
+  userId: string
+  name: string
+  email: string
+  phone: string
+  vehicleTypeName?: string | null
+  vehicleLicensePlateNumber?: string | null
+}
+
 export type AdminMasterDataEntity =
   | 'property-types'
   | 'states'

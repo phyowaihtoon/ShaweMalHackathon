@@ -92,18 +92,6 @@ export function HomePage() {
 
       {homeQuery.data ? (
         <>
-          <HomeSection title={t('home.featuredTitle')} subtitle={t('home.featuredSubtitle')}>
-            {homeQuery.data.featuredHouses.length === 0 ? (
-              <EmptyHint text={t('home.emptyFeatured')} />
-            ) : (
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {homeQuery.data.featuredHouses.map((house) => (
-                  <HouseCard key={house.id} house={house} />
-                ))}
-              </div>
-            )}
-          </HomeSection>
-
           <HomeSection title={t('home.popularTitle')} subtitle={t('home.popularSubtitle')}>
             {homeQuery.data.popularRecommended.length === 0 ? (
               <EmptyHint text={t('home.emptyPopular')} />

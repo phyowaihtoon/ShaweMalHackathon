@@ -11,6 +11,8 @@ export const ACTIVE_MOVING_STATUSES = [
 
 export const PAST_MOVING_STATUSES = ['COMPLETED', 'CANCELLED'] as const
 
+export const ALL_MOVING_STATUSES = [...ACTIVE_MOVING_STATUSES, ...PAST_MOVING_STATUSES] as const
+
 export const MOVING_TIMELINE_STEPS = [
   { id: 'booking_confirmed', statuses: ['BOOKED'], etaStage: null },
   { id: 'driver_assigned', statuses: ['ACCEPTED', 'ASSIGNED'], etaStage: null },

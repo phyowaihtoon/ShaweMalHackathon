@@ -344,5 +344,5 @@ This file-upload increment is accepted when:
 | Moving cargo upload + detail/driver display | Done |
 | Profile picture upload + avatar display | Done |
 | Agent/driver registration file pickers | Done |
-| Admin `GET /admin/agents|drivers/:userId` + doc preview | Done |
+| Admin verification queues + `GET /admin/agents|drivers/:userId` doc preview | Done |
 | Cloud storage | Deferred |

@@ -12,6 +12,7 @@ import { resolvePublicUploadUrl } from '@/lib/uploads/resolve-public-url'
 
 import { bookingsApi } from '../api/bookings-api'
 import { housesApi } from '../api/houses-api'
+import { BookHouseDialog } from '../components/BookHouseDialog'
 import { CancelBookingDialog } from '../components/CancelBookingDialog'
 import { HouseAvailabilityBadge } from '../components/HouseAvailabilityBadge'
 import { HouseLocationMap } from '../components/HouseLocationMap'
@@ -19,7 +20,7 @@ import { useWishlist } from '../hooks/useWishlist'
 import { isHouseAvailable } from '../lib/availability'
 
 function formatFees(value: number) {
-  return new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(value)
+  return `${new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(value)} MMK`
 }
 
 export function HouseDetailsPage() {
@@ -31,6 +32,7 @@ export function HouseDetailsPage() {
   const { wishlistedIds, add, remove, isToggling } = useWishlist()
   const [bookError, setBookError] = useState<string | null>(null)
   const [cancelError, setCancelError] = useState<string | null>(null)
+  const [bookDialogOpen, setBookDialogOpen] = useState(false)
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
 
   const detailsQuery = useQuery({
@@ -49,10 +51,12 @@ export function HouseDetailsPage() {
     mutationFn: () => housesApi.book(id),
     onSuccess: async (result) => {
       setBookError(null)
+      setBookDialogOpen(false)
       await queryClient.invalidateQueries({ queryKey: ['my-bookings'] })
       navigate(`/houses/${id}/bookings/${result.booking.id}/confirmation`)
     },
     onError: (error) => {
+      setBookDialogOpen(false)
       if (error instanceof ApiRequestError) {
         setBookError(error.message)
         return
@@ -87,7 +91,7 @@ export function HouseDetailsPage() {
       return
     }
     setBookError(null)
-    void bookMutation.mutateAsync()
+    setBookDialogOpen(true)
   }
 
   const onToggleWishlist = async () => {
@@ -157,7 +161,7 @@ export function HouseDetailsPage() {
             </Button>
           ) : (
             <Button type="button" disabled={bookMutation.isPending} onClick={onBook}>
-              {bookMutation.isPending ? t('common.loading') : t('houses.bookNow')}
+              {t('houses.bookNow')}
             </Button>
           )}
         </div>
@@ -165,6 +169,20 @@ export function HouseDetailsPage() {
 
       {bookError ? <p className="text-sm text-destructive">{bookError}</p> : null}
       {cancelError ? <p className="text-sm text-destructive">{cancelError}</p> : null}
+
+      <BookHouseDialog
+        open={bookDialogOpen}
+        houseTitle={house.title}
+        isPending={bookMutation.isPending}
+        onDismiss={() => {
+          if (!bookMutation.isPending) {
+            setBookDialogOpen(false)
+          }
+        }}
+        onConfirm={() => {
+          void bookMutation.mutateAsync()
+        }}
+      />
 
       <CancelBookingDialog
         open={cancelDialogOpen && Boolean(myActiveBooking)}
@@ -198,29 +216,6 @@ export function HouseDetailsPage() {
           </div>
         )}
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle role="heading" aria-level={2}>
-            {t('houses.mapTitle')}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {house.location.streetAddress ? (
-            <p className="text-sm">
-              <span className="font-medium">{t('houses.streetAddress')}: </span>
-              {house.location.streetAddress}
-            </p>
-          ) : null}
-          <HouseLocationMap
-            streetAddress={house.location.streetAddress}
-            cityName={house.location.city?.name}
-            stateName={house.location.state?.name}
-            latitude={house.location.latitude}
-            longitude={house.location.longitude}
-          />
-        </CardContent>
-      </Card>
 
       <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
         <Card>
@@ -318,6 +313,29 @@ export function HouseDetailsPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle role="heading" aria-level={2}>
+            {t('houses.mapTitle')}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {house.location.streetAddress ? (
+            <p className="text-sm">
+              <span className="font-medium">{t('houses.streetAddress')}: </span>
+              {house.location.streetAddress}
+            </p>
+          ) : null}
+          <HouseLocationMap
+            streetAddress={house.location.streetAddress}
+            cityName={house.location.city?.name}
+            stateName={house.location.state?.name}
+            latitude={house.location.latitude}
+            longitude={house.location.longitude}
+          />
+        </CardContent>
+      </Card>
     </section>
   )
 }

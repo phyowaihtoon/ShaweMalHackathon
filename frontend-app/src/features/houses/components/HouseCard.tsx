@@ -22,7 +22,7 @@ type HouseCardProps = {
 }
 
 function formatFees(value: number) {
-  return new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(value)
+  return `${new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(value)} MMK`
 }
 
 export function HouseCard({ house, className }: HouseCardProps) {

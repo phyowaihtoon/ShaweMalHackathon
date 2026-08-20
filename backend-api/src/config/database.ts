@@ -1,3 +1,5 @@
+import type { PoolConfig } from 'pg';
+
 export type DatabaseTarget = 'local' | 'supabase';
 
 export interface ResolvedDatabaseUrls {
@@ -31,18 +33,28 @@ const ensureSslMode = (connectionString: string): string => {
   return appendQueryParam(appendQueryParam(connectionString, 'uselibpqcompat', 'true'), 'sslmode', 'require');
 };
 
+/**
+ * Pool config for `@prisma/adapter-pg`.
+ * On Vercel, keep `max: 1` so each serverless isolate does not open a large pool.
+ */
 export const toPrismaPgConfig = (
   connectionString: string,
-  target: DatabaseTarget
-): { connectionString: string; ssl?: { rejectUnauthorized: boolean } } => {
-  if (target !== 'supabase') {
-    return { connectionString };
+  target: DatabaseTarget,
+  source: NodeJS.ProcessEnv = process.env
+): PoolConfig => {
+  const isServerless = Boolean(source.VERCEL);
+  const config: PoolConfig = {
+    connectionString: target === 'supabase' ? ensureSslMode(connectionString) : connectionString,
+    max: isServerless ? 1 : 10,
+    idleTimeoutMillis: isServerless ? 10_000 : 30_000,
+    connectionTimeoutMillis: 10_000
+  };
+
+  if (target === 'supabase') {
+    config.ssl = { rejectUnauthorized: false };
   }
 
-  return {
-    connectionString: ensureSslMode(connectionString),
-    ssl: { rejectUnauthorized: false }
-  };
+  return config;
 };
 
 export const resolveDatabaseUrls = (

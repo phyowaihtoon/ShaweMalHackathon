@@ -1,4 +1,4 @@
-import { resolveDatabaseUrls } from '../../../src/config/database';
+import { resolveDatabaseUrls, toPrismaPgConfig } from '../../../src/config/database';
 
 describe('resolveDatabaseUrls', () => {
   it('defaults to local and accepts DATABASE_URL as an alias', () => {
@@ -44,5 +44,29 @@ describe('resolveDatabaseUrls', () => {
         SUPABASE_DATABASE_URL: 'postgresql://postgres.ref:secret@pooler/postgres'
       })
     ).toThrow(/SUPABASE_DIRECT_URL/);
+  });
+});
+
+describe('toPrismaPgConfig', () => {
+  it('uses a single connection on Vercel', () => {
+    const config = toPrismaPgConfig(
+      'postgresql://postgres:secret@localhost:5432/shawemal',
+      'local',
+      { VERCEL: '1' }
+    );
+
+    expect(config.max).toBe(1);
+    expect(config.connectionTimeoutMillis).toBe(10_000);
+  });
+
+  it('enables ssl for supabase targets', () => {
+    const config = toPrismaPgConfig(
+      'postgresql://postgres.ref:secret@aws-0-ap.pooler.supabase.com:5432/postgres',
+      'supabase',
+      {}
+    );
+
+    expect(config.ssl).toEqual({ rejectUnauthorized: false });
+    expect(config.connectionString).toContain('sslmode=require');
   });
 });

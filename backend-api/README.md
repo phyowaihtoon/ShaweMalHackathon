@@ -85,6 +85,10 @@ This API runs as a serverless Express function (`api/index.ts` + `vercel.json`).
 | `JWT_ALGORITHM` | `HS256` |
 | `CORS_ORIGIN` | Exact frontend origin, e.g. `https://shawe-mal-web-smoky.vercel.app` (no trailing slash). Comma-separated list allowed. Must match the browser Origin or preflight fails. |
 
+Use the **Supabase session pooler** URL (host contains `pooler.supabase.com`, prefer port `5432`) for `SUPABASE_DATABASE_URL`. Direct `db.*.supabase.co` can fail from Vercel (IPv6). Run migrate/seed against `SUPABASE_DIRECT_URL` from your machine.
+
+After deploy, check `GET /api/v1/health/db` — if it returns 503, the `errors.details` field shows the Postgres error.
+
 Do **not** put `SEED_ADMIN_*` on Vercel. Run `npm run prisma:migrate:deploy` and `npm run prisma:seed` once against Supabase from your machine or CI.
 
 After the first deploy, set the frontend `VITE_API_BASE_URL` to `https://<this-api>.vercel.app/api/v1` and redeploy the frontend.

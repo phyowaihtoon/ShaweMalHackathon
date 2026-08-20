@@ -10,15 +10,15 @@ The monorepo contains a public portal (visitors, users, agents, drivers) and an 
 ┌─────────────────────┐         ┌──────────────────────┐
 │  frontend-app       │  HTTP   │  backend-api         │
 │  Vite + React       │ ──────► │  Express + Prisma    │
-│  Public + Admin UI  │  /api/v1│  JWT auth + MySQL    │
+│  Public + Admin UI  │  /api/v1│  JWT auth + Prisma   │
 └─────────────────────┘         └──────────┬───────────┘
                                            │
                                            ▼
-                                      MySQL database
+                                 PostgreSQL (`shawemal`)
 ```
 
 - **frontend-app** — SPA with feature-based modules, React Query data fetching, role-aware routing, English/Myanmar i18n, and light/dark themes.
-- **backend-api** — Layered TypeScript API (`routes` → `controllers` → `services`) with Express Validator, JWT sessions, and Prisma ORM against MySQL.
+- **backend-api** — Layered TypeScript API (`routes` → `controllers` → `services`) with Express Validator, JWT sessions, and Prisma ORM against PostgreSQL.
 - **Specs & tooling** — Requirement specification at the repo root; Cursor/GitHub agent skills under `.cursor/` and `.github/`.
 
 ## Technology stack
@@ -26,14 +26,14 @@ The monorepo contains a public portal (visitors, users, agents, drivers) and an 
 | Layer | Technologies |
 | --- | --- |
 | Frontend | Vite, React 19, TypeScript, TanStack Query, React Router, React Hook Form, shadcn/ui, Tailwind CSS, Vitest |
-| Backend | Node.js, Express 5, TypeScript, Prisma 7, MySQL, JWT, bcrypt, Zod, Jest + Supertest |
+| Backend | Node.js, Express 5, TypeScript, Prisma 7, PostgreSQL, JWT, bcrypt, Zod, Jest + Supertest |
 | Tooling | npm, ESLint (backend), Oxlint (frontend), Prisma Migrate + seed |
 
 ## Prerequisites
 
 - Node.js 20+ (LTS recommended)
 - npm 10+
-- MySQL 8+ (local or remote) with a database created for development (for example `shwemal_dev`)
+- PostgreSQL 16+ (local or remote). Create an empty database named `shawemal` before migrating.
 
 ## Setup
 
@@ -53,10 +53,11 @@ cd frontend-app && npm install && cd ..
 
 | Variable | Purpose |
 | --- | --- |
-| `DATABASE_URL` | MySQL connection string |
+| `DATABASE_URL` | PostgreSQL URL, for example `postgresql://USER:PASSWORD@localhost:5432/shawemal`. Percent-encode special characters in the password (for example `@` → `%40`). |
 | `JWT_SECRET` | Signing secret for access tokens |
 | `CORS_ORIGIN` | Frontend origin (default `http://localhost:5173`) |
 | `PORT` | API port (default `4000`) |
+| `SEED_ADMIN_EMAIL` | Admin portal login (default `admin@shawemal.com`) |
 
 **Frontend** — copy `frontend-app/.env.example` to `frontend-app/.env`:
 
@@ -67,6 +68,12 @@ VITE_DEFAULT_LOCALE=en
 
 ### 3. Database
 
+Create the empty database (once):
+
+```sql
+CREATE DATABASE shawemal;
+```
+
 From `backend-api`:
 
 ```bash
@@ -75,7 +82,12 @@ npm run prisma:migrate:dev
 npm run prisma:seed
 ```
 
-Seed creates roles, status codes, and a default admin from `SEED_ADMIN_*` in `.env`.
+Seed creates roles, status codes, master data, and the default admin user (`SEED_ADMIN_*` in `.env`):
+
+- Email: `admin@shawemal.com`
+- Password: `Admin@123456` (change after first login)
+
+Admin portal: [http://localhost:5173/admin/sign-in](http://localhost:5173/admin/sign-in)
 
 ### 4. Run locally
 
@@ -94,6 +106,7 @@ npm run dev
 ```
 
 - Frontend: [http://localhost:5173](http://localhost:5173)
+- Admin portal: [http://localhost:5173/admin/sign-in](http://localhost:5173/admin/sign-in)
 - API health: [http://localhost:4000/api/v1/health](http://localhost:4000/api/v1/health)
 
 ## Development workflow

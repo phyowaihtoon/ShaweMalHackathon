@@ -17,7 +17,7 @@ This document specifies how ShweMal will handle photo and document uploads for t
 
 ### 2.1 Current state (before this increment)
 - Forms collect **path strings** only (placeholders such as `uploads/nrc-front.jpg`).
-- Domain APIs persist those strings in MySQL via Prisma.
+- Domain APIs persist those strings in PostgreSQL via Prisma.
 - There is **no** multipart upload endpoint, disk write, static file serving for uploads, or real file-picker UI.
 - Binary upload was intentionally deferred in Increments A–D.
 
@@ -26,7 +26,7 @@ Enable real file selection, local server storage, path persistence, and image di
 
 ### 2.3 Out of scope
 - Cloud object storage (S3, GCS, Azure Blob, R2, etc.)
-- Storing binary files in MySQL BLOBs
+- Storing binary files in PostgreSQL BLOBs
 - Base64 embedding of images inside JSON create/update payloads
 - Image cropping / editing tools
 - HEIC conversion (document jpg/png/webp only for v1)

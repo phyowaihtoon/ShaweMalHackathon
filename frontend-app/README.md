@@ -24,6 +24,7 @@ Independent Vite + React + TypeScript frontend for the ShweMal web application.
 | JWT storage | localStorage (Remember Me) or sessionStorage |
 | Auth contract | `POST /auth/register`, `POST /auth/login`, `GET /auth/verify`, `GET /auth/me`, `POST /auth/refresh`, `POST /auth/logout` |
 | Default locale | `en` |
+| Seeded admin | `admin@shawemal.com` / `Admin@123456` (created by backend `prisma db seed`) |
 
 ## Scripts
 

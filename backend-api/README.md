@@ -1,6 +1,6 @@
 # ShweMal Backend API
 
-TypeScript + Express + Prisma + MySQL API for the ShweMal platform.
+TypeScript + Express + Prisma + PostgreSQL API for the ShweMal platform.
 
 ## Scripts
 
@@ -33,7 +33,7 @@ Layered starter layout under `src/`:
 
 Copy `.env.example` to `.env` and set:
 
-- `DATABASE_URL`
+- `DATABASE_URL` — PostgreSQL URL for database `shawemal` (example: `postgresql://USER:PASSWORD@localhost:5432/shawemal`). Percent-encode special characters in the password (`@` → `%40`).
 - `JWT_SECRET`
 - `JWT_EXPIRES_IN`
 - `CORS_ORIGIN`
@@ -41,6 +41,8 @@ Copy `.env.example` to `.env` and set:
 - `UPLOAD_ROOT` (optional; defaults to `./uploads`)
 - `UPLOAD_MAX_BYTES` (optional; default 5MB)
 - `UPLOAD_ALLOWED_MIME` (optional; jpeg/png/webp)
+- `SEED_ADMIN_EMAIL` (default `admin@shawemal.com`)
+- `SEED_ADMIN_PASSWORD` (default `Admin@123456`)
 
 ## Local file uploads
 
@@ -55,9 +57,13 @@ Ensure `uploads/{houses,moving,docs,profile}` exist (created on boot). Binaries 
 
 ## Database setup
 
-1. `npm run prisma:generate`
-2. `npm run prisma:migrate:dev -- --name init`
-3. `npm run prisma:seed`
+1. Create an empty PostgreSQL database named `shawemal`.
+2. Set `DATABASE_URL` in `.env` to that database.
+3. `npm run prisma:generate`
+4. `npm run prisma:migrate:dev` (or `npm run prisma:migrate:deploy` in production)
+5. `npm run prisma:seed`
+
+Seed creates roles, status codes, Yangon locations, property types, vehicle types, amenities, floor levels, moving inventory items, and the admin portal user `admin@shawemal.com` / `Admin@123456`. Change that password after first login.
 
 ## API overview (`/api/v1`)
 
@@ -102,4 +108,4 @@ Implemented requirement groups:
 ## Notes
 
 - Local-disk binary upload is available via `POST /uploads`; domain create/update APIs still persist returned path strings.
-- Integration tests mock Prisma (except upload disk tests); run migrations against MySQL for full database verification.
+- Integration tests mock Prisma (except upload disk tests); run migrations against PostgreSQL for full database verification.

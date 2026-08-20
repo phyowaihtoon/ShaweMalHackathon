@@ -1,11 +1,11 @@
+import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
-import { PrismaMariaDb } from '@prisma/adapter-mariadb';
 
 import { env } from '../config/env';
 
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
-const adapter = new PrismaMariaDb(env.databaseUrl);
+const adapter = new PrismaPg({ connectionString: env.databaseUrl });
 
 export const prisma =
   globalForPrisma.prisma ??

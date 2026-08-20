@@ -1,7 +1,7 @@
 import 'dotenv/config';
 
+import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
-import { PrismaMariaDb } from '@prisma/adapter-mariadb';
 import bcrypt from 'bcryptjs';
 
 const databaseUrl = process.env.DATABASE_URL;
@@ -10,7 +10,7 @@ if (!databaseUrl) {
   throw new Error('DATABASE_URL is required to run prisma seed.');
 }
 
-const adapter = new PrismaMariaDb(databaseUrl);
+const adapter = new PrismaPg({ connectionString: databaseUrl });
 const prisma = new PrismaClient({ adapter });
 
 const seedRoles = async (): Promise<void> => {
@@ -420,7 +420,7 @@ const seedMovingInventoryItems = async (): Promise<void> => {
 };
 
 const seedAdminUser = async (): Promise<void> => {
-  const email = process.env.SEED_ADMIN_EMAIL ?? 'admin@shwemal.com';
+  const email = process.env.SEED_ADMIN_EMAIL ?? 'admin@shawemal.com';
   const password = process.env.SEED_ADMIN_PASSWORD ?? 'Admin@123456';
   const name = process.env.SEED_ADMIN_NAME ?? 'ShweMal Admin';
   const phone = process.env.SEED_ADMIN_PHONE ?? '09000000001';

@@ -41,7 +41,7 @@ Copy `.env.example` to `.env` and set:
 - `JWT_EXPIRES_IN`
 - `CORS_ORIGIN`
 - `PORT`
-- `UPLOAD_ROOT` (optional; defaults to `./uploads`)
+- `UPLOAD_ROOT` (optional; defaults to `./uploads` locally, `/tmp/uploads` when `VERCEL` is set)
 - `UPLOAD_MAX_BYTES` (optional; default 5MB)
 - `UPLOAD_ALLOWED_MIME` (optional; jpeg/png/webp)
 - `SEED_ADMIN_EMAIL` (default `admin@shawemal.com`)
@@ -57,6 +57,34 @@ Uploads are stored on local disk (no cloud in this version). See `FileUploadSpec
 - Domain APIs still accept path strings such as `uploads/houses/{uuid}.jpg`
 
 Ensure `uploads/{houses,moving,docs,profile}` exist (created on boot). Binaries are gitignored.
+
+On Vercel, uploads default to `/tmp/uploads` and are **ephemeral** (lost on cold start / redeploy). Set `UPLOAD_ROOT` only if you need a different path.
+
+## Deploy on Vercel (GitHub)
+
+This API runs as a serverless Express function (`api/index.ts` + `vercel.json`). Local `npm run dev` / `npm start` are unchanged.
+
+1. Import the monorepo into a **new** Vercel project (separate from the frontend).
+2. Set **Root Directory** to `backend-api`.
+3. Framework Preset: **Other**. Node.js: **20.x** or **22.x**.
+4. Leave Install/Build defaults (`npm install` runs `postinstall` → `prisma generate`). Do not use a long-running start command.
+5. Optional Ignored Build Step: `git diff --quiet HEAD^ HEAD -- ./backend-api`
+6. Set Production environment variables:
+
+| Variable | Notes |
+| --- | --- |
+| `NODE_ENV` | `production` |
+| `DATABASE_TARGET` | `supabase` |
+| `SUPABASE_DATABASE_URL` | Session pooler URL (db password, not anon key) |
+| `SUPABASE_DIRECT_URL` | Direct Postgres URL (migrations) |
+| `JWT_SECRET` | Strong random secret |
+| `JWT_EXPIRES_IN` | e.g. `15m` |
+| `JWT_ALGORITHM` | `HS256` |
+| `CORS_ORIGIN` | Exact frontend origin, e.g. `https://<frontend>.vercel.app` (no trailing slash) |
+
+Do **not** put `SEED_ADMIN_*` on Vercel. Run `npm run prisma:migrate:deploy` and `npm run prisma:seed` once against Supabase from your machine or CI.
+
+After the first deploy, set the frontend `VITE_API_BASE_URL` to `https://<this-api>.vercel.app/api/v1` and redeploy the frontend.
 
 ## Database setup
 

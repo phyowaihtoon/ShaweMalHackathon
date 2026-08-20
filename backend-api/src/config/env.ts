@@ -1,9 +1,8 @@
-import path from 'node:path';
-
 import dotenv from 'dotenv';
 
 import { DEFAULT_UPLOAD_ALLOWED_MIME } from '../utils/upload-path';
 import { resolveDatabaseUrls } from './database';
+import { resolveUploadRoot } from './upload-root';
 
 dotenv.config();
 
@@ -68,9 +67,7 @@ export const env = {
   jwtAlgorithm: jwtAlgorithmRaw as JwtAlgorithm,
   corsOrigin: process.env.CORS_ORIGIN ?? '*',
   bcryptSaltRounds: parseNumber(process.env.BCRYPT_SALT_ROUNDS, 12),
-  uploadRoot: process.env.UPLOAD_ROOT
-    ? path.resolve(process.env.UPLOAD_ROOT)
-    : path.resolve(process.cwd(), 'uploads'),
+  uploadRoot: resolveUploadRoot(),
   uploadMaxBytes: parsePositiveInt(process.env.UPLOAD_MAX_BYTES, 5 * 1024 * 1024, 'UPLOAD_MAX_BYTES'),
   uploadAllowedMime
 } as const;

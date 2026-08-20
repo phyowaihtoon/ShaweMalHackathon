@@ -16,6 +16,6 @@
     "types": ["node", "jest"],
     "typeRoots": ["./src/types", "./node_modules/@types"]
   },
-  "include": ["src", "tests", "prisma", "jest.config.cjs", "prisma.config.ts"],
+  "include": ["src", "api", "tests", "prisma", "jest.config.cjs", "prisma.config.ts"],
   "exclude": ["node_modules", "dist"]
 }

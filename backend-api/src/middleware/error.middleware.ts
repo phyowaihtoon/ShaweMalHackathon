@@ -22,6 +22,12 @@ export const errorMiddleware = (
   const error = err as Error;
   const exposeMessage = process.env.NODE_ENV !== 'production';
 
+  console.error('Unhandled API error', {
+    message: error.message,
+    name: error.name,
+    stack: error.stack
+  });
+
   sendError(res, 500, 'Internal server error', {
     code: 'INTERNAL_SERVER_ERROR',
     details: exposeMessage ? error.message : undefined

@@ -1,6 +1,7 @@
 import cors from 'cors';
 import express from 'express';
 
+import { createCorsOriginOption } from './config/cors-origin';
 import { env } from './config/env';
 import { errorMiddleware } from './middleware/error.middleware';
 import { notFoundMiddleware } from './middleware/not-found.middleware';
@@ -17,7 +18,7 @@ void ensureUploadDirectories().catch((error: unknown) => {
 app.use(requestIdMiddleware);
 app.use(
   cors({
-    origin: env.corsOrigin,
+    origin: createCorsOriginOption(env.corsOrigin),
     credentials: true
   })
 );

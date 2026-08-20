@@ -83,7 +83,7 @@ This API runs as a serverless Express function (`api/index.ts` + `vercel.json`).
 | `JWT_SECRET` | Strong random secret |
 | `JWT_EXPIRES_IN` | e.g. `15m` |
 | `JWT_ALGORITHM` | `HS256` |
-| `CORS_ORIGIN` | Exact frontend origin, e.g. `https://<frontend>.vercel.app` (no trailing slash) |
+| `CORS_ORIGIN` | Exact frontend origin, e.g. `https://shawe-mal-web-smoky.vercel.app` (no trailing slash). Comma-separated list allowed. Must match the browser Origin or preflight fails. |
 
 Do **not** put `SEED_ADMIN_*` on Vercel. Run `npm run prisma:migrate:deploy` and `npm run prisma:seed` once against Supabase from your machine or CI.
 

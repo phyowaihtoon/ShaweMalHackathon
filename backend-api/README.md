@@ -33,7 +33,10 @@ Layered starter layout under `src/`:
 
 Copy `.env.example` to `.env` and set:
 
-- `DATABASE_URL` — PostgreSQL URL for database `shawemal` (example: `postgresql://USER:PASSWORD@localhost:5432/shawemal`). Percent-encode special characters in the password (`@` → `%40`).
+- `DATABASE_TARGET` — `local` (default) or `supabase`
+- `LOCAL_DATABASE_URL` — used when target is `local` (example: `postgresql://USER:PASSWORD@localhost:5432/shawemal`). `DATABASE_URL` is a backward-compatible alias. Percent-encode special characters in the password (`@` → `%40`).
+- `SUPABASE_DATABASE_URL` — session-mode pooler URL when target is `supabase` (database password, not the anon key)
+- `SUPABASE_DIRECT_URL` — direct db host used by Prisma migrate when target is `supabase`
 - `JWT_SECRET`
 - `JWT_EXPIRES_IN`
 - `CORS_ORIGIN`
@@ -57,11 +60,28 @@ Ensure `uploads/{houses,moving,docs,profile}` exist (created on boot). Binaries 
 
 ## Database setup
 
+The API always uses Prisma against PostgreSQL. `DATABASE_TARGET` selects the host:
+
+- `local` — `LOCAL_DATABASE_URL` or `DATABASE_URL`
+- `supabase` — `SUPABASE_DATABASE_URL` for the running API; `SUPABASE_DIRECT_URL` for migrate
+
+### Local
+
 1. Create an empty PostgreSQL database named `shawemal`.
-2. Set `DATABASE_URL` in `.env` to that database.
+2. Set `DATABASE_TARGET=local` and `LOCAL_DATABASE_URL` in `.env`.
 3. `npm run prisma:generate`
 4. `npm run prisma:migrate:dev` (or `npm run prisma:migrate:deploy` in production)
 5. `npm run prisma:seed`
+
+### Supabase
+
+1. Create a Supabase project and copy the session-mode pooler URI and the direct URI (Project Settings → Database).
+2. Set `DATABASE_TARGET=supabase`, `SUPABASE_DATABASE_URL`, and `SUPABASE_DIRECT_URL`. Do not use the anon key.
+3. `npm run prisma:generate`
+4. `npm run prisma:migrate:deploy`
+5. `npm run prisma:seed` (optional if you only need schema)
+
+SSL (`sslmode=require`) is appended for Supabase URLs when it is not already present. If the deploy host has no IPv6, use the pooler and/or the Supabase IPv4 add-on.
 
 Seed creates roles, status codes, Yangon locations, property types, vehicle types, amenities, floor levels, moving inventory items, and the admin portal user `admin@shawemal.com` / `Admin@123456`. Change that password after first login.
 

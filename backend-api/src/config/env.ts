@@ -3,6 +3,7 @@ import path from 'node:path';
 import dotenv from 'dotenv';
 
 import { DEFAULT_UPLOAD_ALLOWED_MIME } from '../utils/upload-path';
+import { resolveDatabaseUrls } from './database';
 
 dotenv.config();
 
@@ -50,6 +51,7 @@ if (!ALLOWED_ALGORITHMS.includes(jwtAlgorithmRaw as JwtAlgorithm)) {
   throw new Error(`Unsupported JWT_ALGORITHM: ${jwtAlgorithmRaw}`);
 }
 
+const database = resolveDatabaseUrls();
 const uploadAllowedMime = (process.env.UPLOAD_ALLOWED_MIME ?? DEFAULT_UPLOAD_ALLOWED_MIME.join(','))
   .split(',')
   .map((item) => item.trim())
@@ -58,7 +60,9 @@ const uploadAllowedMime = (process.env.UPLOAD_ALLOWED_MIME ?? DEFAULT_UPLOAD_ALL
 export const env = {
   nodeEnv: process.env.NODE_ENV ?? 'development',
   port: Number(process.env.PORT ?? 4000),
-  databaseUrl: requireEnv('DATABASE_URL'),
+  databaseTarget: database.target,
+  databaseUrl: database.databaseUrl,
+  databaseDirectUrl: database.directUrl,
   jwtSecret: requireEnv('JWT_SECRET'),
   jwtExpiresIn: process.env.JWT_EXPIRES_IN ?? '15m',
   jwtAlgorithm: jwtAlgorithmRaw as JwtAlgorithm,

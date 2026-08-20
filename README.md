@@ -14,7 +14,7 @@ The monorepo contains a public portal (visitors, users, agents, drivers) and an 
 └─────────────────────┘         └──────────┬───────────┘
                                            │
                                            ▼
-                                 PostgreSQL (`shawemal`)
+                           PostgreSQL (local shawemal or Supabase)
 ```
 
 - **frontend-app** — SPA with feature-based modules, React Query data fetching, role-aware routing, English/Myanmar i18n, and light/dark themes.
@@ -33,7 +33,7 @@ The monorepo contains a public portal (visitors, users, agents, drivers) and an 
 
 - Node.js 20+ (LTS recommended)
 - npm 10+
-- PostgreSQL 16+ (local or remote). Create an empty database named `shawemal` before migrating.
+- PostgreSQL 16+ locally (database `shawemal`) and/or a Supabase Postgres project. Switch with `DATABASE_TARGET`.
 
 ## Setup
 
@@ -53,7 +53,10 @@ cd frontend-app && npm install && cd ..
 
 | Variable | Purpose |
 | --- | --- |
-| `DATABASE_URL` | PostgreSQL URL, for example `postgresql://USER:PASSWORD@localhost:5432/shawemal`. Percent-encode special characters in the password (for example `@` → `%40`). |
+| `DATABASE_TARGET` | `local` (default) or `supabase` |
+| `LOCAL_DATABASE_URL` | Local PostgreSQL URL when `DATABASE_TARGET=local`, for example `postgresql://USER:PASSWORD@localhost:5432/shawemal`. `DATABASE_URL` is a backward-compatible alias. Percent-encode special characters in the password (`@` → `%40`). |
+| `SUPABASE_DATABASE_URL` | Session-mode pooler URL when `DATABASE_TARGET=supabase` (database password, not the anon key) |
+| `SUPABASE_DIRECT_URL` | Direct Postgres URL for `prisma migrate` when using Supabase |
 | `JWT_SECRET` | Signing secret for access tokens |
 | `CORS_ORIGIN` | Frontend origin (default `http://localhost:5173`) |
 | `PORT` | API port (default `4000`) |
@@ -68,11 +71,13 @@ VITE_DEFAULT_LOCALE=en
 
 ### 3. Database
 
-Create the empty database (once):
+**Local PostgreSQL** (`DATABASE_TARGET=local`) — create the empty database once:
 
 ```sql
 CREATE DATABASE shawemal;
 ```
+
+**Supabase** (`DATABASE_TARGET=supabase`) — create a project, then copy the session pooler URI into `SUPABASE_DATABASE_URL` and the direct URI into `SUPABASE_DIRECT_URL`. Prefer pooler session mode (port 5432 on the pooler). `sslmode=require` is added automatically if missing. Use the database password, never the anon key.
 
 From `backend-api`:
 
@@ -81,6 +86,8 @@ npm run prisma:generate
 npm run prisma:migrate:dev
 npm run prisma:seed
 ```
+
+Against Supabase, use `npm run prisma:migrate:deploy` (migrations use `SUPABASE_DIRECT_URL`) then `npm run prisma:seed`.
 
 Seed creates roles, status codes, master data, and the default admin user (`SEED_ADMIN_*` in `.env`):
 

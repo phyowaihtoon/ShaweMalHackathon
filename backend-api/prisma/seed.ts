@@ -4,13 +4,10 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
-const databaseUrl = process.env.DATABASE_URL;
+import { resolveDatabaseUrls, toPrismaPgConfig } from '../src/config/database';
 
-if (!databaseUrl) {
-  throw new Error('DATABASE_URL is required to run prisma seed.');
-}
-
-const adapter = new PrismaPg({ connectionString: databaseUrl });
+const { databaseUrl, target } = resolveDatabaseUrls();
+const adapter = new PrismaPg(toPrismaPgConfig(databaseUrl, target));
 const prisma = new PrismaClient({ adapter });
 
 const seedRoles = async (): Promise<void> => {

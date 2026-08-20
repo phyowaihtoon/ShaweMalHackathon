@@ -27,6 +27,7 @@ Layered starter layout under `src/`:
 - `middleware` — auth, validation, errors, request id
 - `validators` — express-validator chains
 - `prisma` — Prisma client bootstrap
+- `storage` — object storage drivers (`disk`, `vercel-blob`, `s3` stub)
 - `utils` — JWT, password, API envelope helpers
 
 ## Environment
@@ -41,24 +42,30 @@ Copy `.env.example` to `.env` and set:
 - `JWT_EXPIRES_IN`
 - `CORS_ORIGIN`
 - `PORT`
-- `UPLOAD_ROOT` (optional; defaults to `./uploads` locally, `/tmp/uploads` when `VERCEL` is set)
+- `STORAGE_DRIVER` — `disk` (default), `vercel-blob`, or `s3` (not implemented yet)
+- `BLOB_STORE_ACCESS` — `public` (default) or `private`; must match the Vercel Blob store mode when using `vercel-blob`
+- `BLOB_READ_WRITE_TOKEN` — required for `vercel-blob` (from the linked Blob store)
+- `UPLOAD_ROOT` (optional; disk only — defaults to `./uploads` locally, `/tmp/uploads` when `VERCEL` is set)
 - `UPLOAD_MAX_BYTES` (optional; default 5MB)
 - `UPLOAD_ALLOWED_MIME` (optional; jpeg/png/webp)
 - `SEED_ADMIN_EMAIL` (default `admin@shawemal.com`)
 - `SEED_ADMIN_PASSWORD` (default `Admin@123456`)
 
-## Local file uploads
+## File uploads (storage drivers)
 
-Uploads are stored on local disk (no cloud in this version). See `FileUploadSpecification.md`.
+Uploads go through `STORAGE_DRIVER`. DB still stores relative paths such as `uploads/houses/{uuid}.jpg`. See `FileUploadSpecification.md`.
 
 - `POST /api/v1/uploads?category=houses|moving|docs|profile` — multipart field `files` (auth required); returns `{ paths: string[] }`
-- Public static: `GET /uploads/houses|moving|profile/...`
+- Public: `GET /uploads/houses|moving|profile/...` (disk static, or redirect/stream from Blob)
 - Protected docs: `GET /api/v1/files/docs/:filename` (owner or admin)
-- Domain APIs still accept path strings such as `uploads/houses/{uuid}.jpg`
 
-Ensure `uploads/{houses,moving,docs,profile}` exist (created on boot). Binaries are gitignored.
+| Driver | Use |
+| --- | --- |
+| `disk` | Local/`./uploads` (or `/tmp` on Vercel — ephemeral; not for production images) |
+| `vercel-blob` | Persistent Vercel Blob store (`BLOB_READ_WRITE_TOKEN`, `BLOB_STORE_ACCESS`) |
+| `s3` | Reserved; throws until implemented |
 
-On Vercel, uploads default to `/tmp/uploads` and are **ephemeral** (lost on cold start / redeploy). Set `UPLOAD_ROOT` only if you need a different path.
+**Vercel production:** set `STORAGE_DRIVER=vercel-blob`, link a Blob store to the API project, set `BLOB_READ_WRITE_TOKEN`, and match `BLOB_STORE_ACCESS` to the store (usually `public`). Docs stay behind the protected files API.
 
 ## Deploy on Vercel (GitHub)
 
@@ -84,6 +91,9 @@ This API runs as a serverless Express function (`api/index.ts` + `vercel.json`).
 | `JWT_EXPIRES_IN` | e.g. `15m` |
 | `JWT_ALGORITHM` | `HS256` |
 | `CORS_ORIGIN` | Exact frontend origin, e.g. `https://shawe-mal-web-smoky.vercel.app` (no trailing slash). Comma-separated list allowed. Must match the browser Origin or preflight fails. |
+| `STORAGE_DRIVER` | `vercel-blob` for persistent images |
+| `BLOB_STORE_ACCESS` | `public` or `private` (must match the Blob store) |
+| `BLOB_READ_WRITE_TOKEN` | From the linked Blob store |
 
 Use the **Supabase session pooler** URL (host contains `pooler.supabase.com`, prefer port `5432`) for `SUPABASE_DATABASE_URL`. Direct `db.*.supabase.co` can fail from Vercel (IPv6). Run migrate/seed against `SUPABASE_DIRECT_URL` from your machine.
 

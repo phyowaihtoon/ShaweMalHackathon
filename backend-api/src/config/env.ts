@@ -2,6 +2,7 @@ import dotenv from 'dotenv';
 
 import { DEFAULT_UPLOAD_ALLOWED_MIME } from '../utils/upload-path';
 import { resolveDatabaseUrls } from './database';
+import { parseBlobStoreAccess, parseStorageDriver } from './storage-driver';
 import { resolveUploadRoot } from './upload-root';
 
 dotenv.config();
@@ -51,6 +52,8 @@ if (!ALLOWED_ALGORITHMS.includes(jwtAlgorithmRaw as JwtAlgorithm)) {
 }
 
 const database = resolveDatabaseUrls();
+const storageDriver = parseStorageDriver(process.env.STORAGE_DRIVER);
+const blobStoreAccess = parseBlobStoreAccess(process.env.BLOB_STORE_ACCESS);
 const uploadAllowedMime = (process.env.UPLOAD_ALLOWED_MIME ?? DEFAULT_UPLOAD_ALLOWED_MIME.join(','))
   .split(',')
   .map((item) => item.trim())
@@ -67,6 +70,8 @@ export const env = {
   jwtAlgorithm: jwtAlgorithmRaw as JwtAlgorithm,
   corsOrigin: process.env.CORS_ORIGIN ?? '*',
   bcryptSaltRounds: parseNumber(process.env.BCRYPT_SALT_ROUNDS, 12),
+  storageDriver,
+  blobStoreAccess,
   uploadRoot: resolveUploadRoot(),
   uploadMaxBytes: parsePositiveInt(process.env.UPLOAD_MAX_BYTES, 5 * 1024 * 1024, 'UPLOAD_MAX_BYTES'),
   uploadAllowedMime

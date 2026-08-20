@@ -1,12 +1,12 @@
 import { randomUUID } from 'node:crypto';
-import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import { env } from '../config/env';
+import { diskObjectAbsolutePath } from '../storage/disk.storage';
+import { getStorage } from '../storage';
 import {
   maxFilesForCategory,
   PUBLIC_UPLOAD_CATEGORIES,
-  UPLOAD_CATEGORIES,
   UPLOAD_MIME_TO_EXTENSION,
   type UploadCategory
 } from '../utils/upload-path';
@@ -18,8 +18,7 @@ export const getCategoryDirectory = (category: UploadCategory): string => {
 };
 
 export const ensureUploadDirectories = async (): Promise<void> => {
-  await mkdir(getUploadRoot(), { recursive: true });
-  await Promise.all(UPLOAD_CATEGORIES.map((category) => mkdir(getCategoryDirectory(category), { recursive: true })));
+  await getStorage().ensureReady();
 };
 
 export const toStoredRelativePath = (category: UploadCategory, filename: string): string => {
@@ -27,13 +26,7 @@ export const toStoredRelativePath = (category: UploadCategory, filename: string)
 };
 
 export const toAbsoluteUploadPath = (relativePath: string): string => {
-  const normalized = relativePath.replace(/\\/g, '/');
-  if (!normalized.startsWith('uploads/')) {
-    throw new Error('Invalid upload relative path.');
-  }
-
-  const withoutPrefix = normalized.slice('uploads/'.length);
-  return path.join(getUploadRoot(), withoutPrefix);
+  return diskObjectAbsolutePath(relativePath);
 };
 
 export const isPublicUploadRelativePath = (relativePath: string): boolean => {
@@ -55,8 +48,8 @@ export const saveUploadedFiles = async (input: SaveUploadedFilesInput): Promise<
     throw new Error('TOO_MANY_FILES');
   }
 
-  await ensureUploadDirectories();
-  const directory = getCategoryDirectory(input.category);
+  const storage = getStorage();
+  await storage.ensureReady();
   const paths: string[] = [];
 
   for (const file of input.files) {
@@ -74,10 +67,21 @@ export const saveUploadedFiles = async (input: SaveUploadedFilesInput): Promise<
     }
 
     const filename = `${randomUUID()}${extension}`;
-    const absolutePath = path.join(directory, filename);
-    await writeFile(absolutePath, file.buffer);
-    paths.push(toStoredRelativePath(input.category, filename));
+    const objectKey = toStoredRelativePath(input.category, filename);
+    const stored = await storage.putObject({
+      category: input.category,
+      objectKey,
+      buffer: file.buffer,
+      contentType: file.mimetype
+    });
+    paths.push(stored.storedPath);
   }
 
   return paths;
+};
+
+export const readStoredObject = async (
+  objectKey: string
+): Promise<{ buffer: Buffer; contentType: string }> => {
+  return getStorage().getObject(objectKey);
 };

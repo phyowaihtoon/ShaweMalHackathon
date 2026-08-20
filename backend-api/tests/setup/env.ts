@@ -11,5 +11,7 @@ process.env.JWT_ALGORITHM = process.env.JWT_ALGORITHM ?? 'HS256';
 process.env.CORS_ORIGIN = process.env.CORS_ORIGIN ?? '*';
 process.env.BCRYPT_SALT_ROUNDS = process.env.BCRYPT_SALT_ROUNDS ?? '4';
 process.env.UPLOAD_ROOT = process.env.UPLOAD_ROOT ?? path.join(os.tmpdir(), 'shwemal-upload-tests');
+process.env.STORAGE_DRIVER = process.env.STORAGE_DRIVER ?? 'disk';
+process.env.BLOB_STORE_ACCESS = process.env.BLOB_STORE_ACCESS ?? 'public';
 process.env.UPLOAD_MAX_BYTES = process.env.UPLOAD_MAX_BYTES ?? String(5 * 1024 * 1024);
 process.env.UPLOAD_ALLOWED_MIME = process.env.UPLOAD_ALLOWED_MIME ?? 'image/jpeg,image/png,image/webp';

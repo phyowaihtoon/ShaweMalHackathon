@@ -1,11 +1,9 @@
-import { createReadStream } from 'node:fs';
-import { access } from 'node:fs/promises';
 import path from 'node:path';
 
 import { Request, Response } from 'express';
 
 import { prisma } from '../prisma/client';
-import { toAbsoluteUploadPath } from '../services/upload.service';
+import { readStoredObject } from '../services/upload.service';
 import { ApiError } from '../utils/api-error';
 import { isUploadCategory, isValidUploadedPath } from '../utils/upload-path';
 
@@ -75,18 +73,16 @@ export const getProtectedFileController = async (req: Request, res: Response): P
     }
   }
 
-  const absolutePath = toAbsoluteUploadPath(relativePath);
-
   try {
-    await access(absolutePath);
+    const object = await readStoredObject(relativePath);
+    const extension = path.extname(filename).toLowerCase();
+    const contentType =
+      object.contentType || CONTENT_TYPE_BY_EXT[extension] || 'application/octet-stream';
+
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'private, max-age=0, no-cache');
+    res.status(200).send(object.buffer);
   } catch {
     throw new ApiError(404, 'FILE_NOT_FOUND', 'File not found.');
   }
-
-  const extension = path.extname(filename).toLowerCase();
-  const contentType = CONTENT_TYPE_BY_EXT[extension] ?? 'application/octet-stream';
-  res.setHeader('Content-Type', contentType);
-  res.setHeader('Cache-Control', 'private, max-age=0, no-cache');
-
-  createReadStream(absolutePath).pipe(res);
 };

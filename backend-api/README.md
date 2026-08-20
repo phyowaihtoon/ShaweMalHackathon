@@ -66,9 +66,12 @@ This API runs as a serverless Express function (`api/index.ts` + `vercel.json`).
 
 1. Import the monorepo into a **new** Vercel project (separate from the frontend).
 2. Set **Root Directory** to `backend-api`.
-3. Framework Preset: **Other**. Node.js: **20.x** or **22.x**.
-4. Leave Install/Build defaults (`npm install` runs `postinstall` → `prisma generate`). Do not use a long-running start command.
-5. Optional Ignored Build Step: `git diff --quiet HEAD^ HEAD -- ./backend-api`
+3. Framework Preset: **Other** (not Express). Node.js: **20.x** or **22.x**.
+4. Build Command: override **on**, leave **empty** (do not run `npm run build`). Output Directory: override **off** or clear — do not type `N/A`.
+5. Install Command: leave default (`npm install` runs `postinstall` → `prisma generate`).
+6. Optional Ignored Build Step: `git diff --quiet HEAD^ HEAD -- ./backend-api`
+
+`vercel.json` sets `framework: null` and an empty `buildCommand` so Vercel uses `api/index.ts` as a serverless function instead of looking for a compiled Express entrypoint.
 6. Set Production environment variables:
 
 | Variable | Notes |
